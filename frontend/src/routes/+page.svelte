@@ -1,0 +1,189 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { getSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
+  import { loadCategories, categories } from '$lib/stores/categories';
+  import type { Task, SuggestMode, Category } from '$lib/types';
+  import TaskCard from '$lib/components/TaskCard.svelte';
+  import TaskForm from '$lib/components/TaskForm.svelte';
+
+  let task: Task | null = null;
+  let allTasks: Task[] = [];
+  let mode: SuggestMode = 'random';
+  let selectedCategoryIds: number[] = [];
+  let loading = false;
+  let error = '';
+  let showBlockForm = false;
+  let showEditForm = false;
+  let noTasks = false;
+
+  onMount(async () => {
+    await loadCategories();
+    await fetchTasks();
+    await fetchSuggestion();
+  });
+
+  async function fetchTasks() {
+    try { allTasks = await getTasks(); } catch {}
+  }
+
+  async function fetchSuggestion() {
+    error = '';
+    noTasks = false;
+    loading = true;
+    try {
+      task = await getSuggestion(mode, selectedCategoryIds);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '';
+      if (msg.includes('No eligible')) { noTasks = true; task = null; }
+      else { error = msg || 'Fehler beim Laden'; }
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function doAction(action: string) {
+    if (!task) return;
+    loading = true;
+    try {
+      await taskAction(task.id, action);
+      await fetchTasks();
+      await fetchSuggestion();
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Fehler';
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function doBlock(data: Parameters<typeof createTask>[0]) {
+    if (!task) return;
+    loading = true;
+    showBlockForm = false;
+    try {
+      await taskAction(task.id, 'block', data);
+      await fetchTasks();
+      await fetchSuggestion();
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Fehler';
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function doEdit(data: Parameters<typeof createTask>[0]) {
+    if (!task) return;
+    loading = true;
+    showEditForm = false;
+    try {
+      task = await updateTask(task.id, data);
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Fehler';
+    } finally {
+      loading = false;
+    }
+  }
+
+  function toggleModeCat(cat: Category) {
+    selectedCategoryIds = selectedCategoryIds.includes(cat.id)
+      ? selectedCategoryIds.filter((id) => id !== cat.id)
+      : [...selectedCategoryIds, cat.id];
+  }
+</script>
+
+<div class="py-6 space-y-6">
+  <!-- Mode selector -->
+  <div class="flex items-center gap-2 flex-wrap">
+    {#each [['random', 'Zufällig'], ['deadline', 'Deadline'], ['category', 'Kategorie']] as [m, label]}
+      <button
+        onclick={() => { mode = m as SuggestMode; fetchSuggestion(); }}
+        class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors {mode === m ? 'bg-indigo-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'}"
+      >{label}</button>
+    {/each}
+  </div>
+
+  <!-- Category filter (only in category mode) -->
+  {#if mode === 'category' && $categories.length > 0}
+    <div class="flex flex-wrap gap-2">
+      {#each $categories as cat}
+        <button
+          onclick={() => { toggleModeCat(cat); fetchSuggestion(); }}
+          class="text-xs px-2.5 py-1 rounded-full transition-all"
+          style={selectedCategoryIds.includes(cat.id)
+            ? `background-color: ${cat.color}; color: white`
+            : `background-color: ${cat.color}22; color: ${cat.color}; border: 1px solid ${cat.color}44`}
+        >{#if cat.icon}{cat.icon} {/if}{cat.name}</button>
+      {/each}
+    </div>
+  {/if}
+
+  <!-- Task card / states -->
+  {#if loading && !task}
+    <div class="bg-neutral-900 rounded-2xl p-6 animate-pulse h-32"></div>
+  {:else if noTasks}
+    <div class="bg-neutral-900 rounded-2xl p-6 text-center space-y-2">
+      <p class="text-2xl">🎉</p>
+      <p class="font-medium">Keine offenen Tasks!</p>
+      <p class="text-sm text-neutral-500">Alle Aufgaben erledigt oder blockiert.</p>
+      <a href="/tasks" class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</a>
+    </div>
+  {:else if task && !showEditForm && !showBlockForm}
+    <TaskCard {task} />
+
+    <!-- Action buttons -->
+    <div class="grid grid-cols-2 gap-3">
+      <button
+        onclick={() => doAction('done')}
+        class="bg-green-700 hover:bg-green-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+      >✅ Erledigt</button>
+      <button
+        onclick={() => doAction('start')}
+        class="bg-indigo-700 hover:bg-indigo-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+      >▶ Arbeite daran</button>
+      <button
+        onclick={() => (showBlockForm = true)}
+        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+      >⛔ Erst das erledigen</button>
+      <button
+        onclick={() => doAction('waiting')}
+        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+      >⏳ Warte auf Input</button>
+      <button
+        onclick={() => doAction('skip')}
+        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+      >⏭ Jetzt nicht</button>
+      <button
+        onclick={() => (showEditForm = true)}
+        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+      >✏️ Bearbeiten</button>
+    </div>
+
+    <button
+      onclick={fetchSuggestion}
+      class="w-full py-2 text-sm text-neutral-500 hover:text-white transition-colors"
+    >↻ Anderen vorschlagen</button>
+
+  {:else if showBlockForm}
+    <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">
+      <p class="font-medium text-sm text-neutral-300">Neuen Blocker-Task anlegen:</p>
+      <TaskForm
+        allTasks={allTasks.filter((t) => t.id !== task?.id)}
+        onSubmit={doBlock}
+        onCancel={() => (showBlockForm = false)}
+      />
+    </div>
+  {:else if showEditForm && task}
+    <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">
+      <p class="font-medium text-sm text-neutral-300">Task bearbeiten:</p>
+      <TaskForm
+        task={task}
+        {allTasks}
+        onSubmit={doEdit}
+        onCancel={() => (showEditForm = false)}
+      />
+    </div>
+  {/if}
+
+  {#if error}
+    <p class="text-red-400 text-sm text-center">{error}</p>
+  {/if}
+</div>
