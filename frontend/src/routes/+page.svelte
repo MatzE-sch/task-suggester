@@ -60,7 +60,7 @@
 
   function confirmSnooze() {
     if (!snoozeDate) return;
-    doAction('waiting', snoozeDate);
+    doAction('waiting', snoozeDate.length === 10 ? snoozeDate + 'T00:00' : snoozeDate);
   }
 
   async function doBlock(data: Parameters<typeof createTask>[0]) {
@@ -175,16 +175,16 @@
       <p class="font-medium text-sm text-neutral-300">Ab wann soll der Task wieder auftauchen?</p>
       <input
         bind:value={snoozeDate}
-        type="datetime-local"
+        type="date"
         class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
       <div class="flex gap-2">
         <button
-          onclick={() => { const d = new Date(); d.setDate(d.getDate()+1); snoozeDate = d.toISOString().slice(0,16); confirmSnooze(); }}
+          onclick={() => { const d = new Date(); d.setDate(d.getDate()+1); snoozeDate = d.toISOString().slice(0,10); confirmSnooze(); }}
           class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
         >Morgen</button>
         <button
-          onclick={() => { const d = new Date(); d.setDate(d.getDate()+7); snoozeDate = d.toISOString().slice(0,16); confirmSnooze(); }}
+          onclick={() => { const d = new Date(); d.setDate(d.getDate()+7); snoozeDate = d.toISOString().slice(0,10); confirmSnooze(); }}
           class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
         >Nächste Woche</button>
       </div>
