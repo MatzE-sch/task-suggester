@@ -1,14 +1,15 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
-  import { login, register } from '$lib/api';
-  import { getMe } from '$lib/api';
+  import { login, register, getMe } from '$lib/api';
 
   let username = '';
   let password = '';
+  let inviteCode = $page.url.searchParams.get('invite') ?? '';
   let error = '';
   let loading = false;
-  let mode: 'login' | 'register' = 'login';
+  let mode: 'login' | 'register' = inviteCode ? 'register' : 'login';
 
   async function submit() {
     error = '';
@@ -17,7 +18,8 @@
       if (mode === 'login') {
         await login(username, password);
       } else {
-        await register(username, password);
+        if (!inviteCode.trim()) { error = 'Einladungscode erforderlich'; return; }
+        await register(username, password, inviteCode.trim());
       }
       const me = await getMe();
       user.set(me);
@@ -56,9 +58,17 @@
         bind:value={password}
         type="password"
         placeholder="Passwort"
-        onkeydown={(e) => e.key === 'Enter' && submit()}
         class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
+
+      {#if mode === 'register'}
+        <input
+          bind:value={inviteCode}
+          type="text"
+          placeholder="Einladungscode *"
+          class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+        />
+      {/if}
 
       {#if error}
         <p class="text-red-400 text-sm">{error}</p>
@@ -66,7 +76,8 @@
 
       <button
         onclick={submit}
-        disabled={loading || !username || !password}
+        onkeydown={(e) => e.key === 'Enter' && submit()}
+        disabled={loading || !username || !password || (mode === 'register' && !inviteCode)}
         class="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl py-3 font-medium transition-colors"
       >
         {loading ? '...' : mode === 'login' ? 'Anmelden' : 'Konto erstellen'}

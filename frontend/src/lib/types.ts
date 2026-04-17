@@ -14,6 +14,8 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   deadline: string | null;
+  snoozed_until: string | null;
+  skip_count: number;
   owner_id: number;
   created_at: string;
   updated_at: string;

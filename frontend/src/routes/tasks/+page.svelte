@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getTasks, createTask, deleteTask, updateTask, downloadIcs } from '$lib/api';
+  import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs } from '$lib/api';
   import { loadCategories } from '$lib/stores/categories';
   import type { Task, TaskStatus } from '$lib/types';
   import TaskForm from '$lib/components/TaskForm.svelte';
@@ -58,6 +58,11 @@
   async function handleDelete(id: number) {
     if (!confirm('Task wirklich löschen?')) return;
     await deleteTask(id);
+    await load();
+  }
+
+  async function markDone(id: number) {
+    await taskAction(id, 'done');
     await load();
   }
 
@@ -123,7 +128,10 @@
               {/if}
             </div>
           </div>
-          <div class="flex gap-2 shrink-0">
+          <div class="flex gap-2 shrink-0 items-center">
+            {#if task.status !== 'done'}
+              <button onclick={() => markDone(task.id)} class="text-sm text-neutral-500 hover:text-green-400 transition-colors font-bold" title="Als erledigt markieren">✓</button>
+            {/if}
             <button onclick={() => (editTask = task)} class="text-xs text-neutral-500 hover:text-white transition-colors">✏️</button>
             <button onclick={() => handleDelete(task.id)} class="text-xs text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
           </div>

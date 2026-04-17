@@ -40,10 +40,10 @@ export async function login(username: string, password: string): Promise<void> {
   localStorage.setItem('token', data.access_token);
 }
 
-export async function register(username: string, password: string): Promise<void> {
+export async function register(username: string, password: string, inviteCode: string): Promise<void> {
   await request('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, invite_code: inviteCode }),
   });
   await login(username, password);
 }
@@ -75,6 +75,7 @@ export async function updateTask(id: number, data: Partial<{
   title: string;
   description: string;
   deadline: string | null;
+  status: string;
   category_ids: number[];
   dependency_ids: number[];
 }>): Promise<Task> {
@@ -90,10 +91,10 @@ export async function taskAction(id: number, action: string, newTask?: {
   description?: string;
   deadline?: string;
   category_ids?: number[];
-}): Promise<Task> {
+}, snoozedUntil?: string): Promise<Task> {
   return request<Task>(`/tasks/${id}/action`, {
     method: 'POST',
-    body: JSON.stringify({ action, new_task: newTask }),
+    body: JSON.stringify({ action, new_task: newTask, snoozed_until: snoozedUntil }),
   });
 }
 
@@ -124,6 +125,21 @@ export async function updateCategory(id: number, data: Partial<{ name: string; c
 
 export async function deleteCategory(id: number): Promise<void> {
   return request<void>(`/categories/${id}`, { method: 'DELETE' });
+}
+
+// Invites
+export interface InviteCode {
+  id: number;
+  code: string;
+  used: boolean;
+}
+
+export async function createInvite(): Promise<InviteCode> {
+  return request<InviteCode>('/invites', { method: 'POST' });
+}
+
+export async function getInvites(): Promise<InviteCode[]> {
+  return request<InviteCode[]>('/invites');
 }
 
 // ICS Export

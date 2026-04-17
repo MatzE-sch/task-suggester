@@ -14,6 +14,8 @@
   let error = '';
   let showBlockForm = false;
   let showEditForm = false;
+  let showSnoozeForm = false;
+  let snoozeDate = '';
   let noTasks = false;
 
   onMount(async () => {
@@ -41,11 +43,12 @@
     }
   }
 
-  async function doAction(action: string) {
+  async function doAction(action: string, snoozedUntil?: string) {
     if (!task) return;
     loading = true;
+    showSnoozeForm = false;
     try {
-      await taskAction(task.id, action);
+      await taskAction(task.id, action, undefined, snoozedUntil ? new Date(snoozedUntil).toISOString() : undefined);
       await fetchTasks();
       await fetchSuggestion();
     } catch (e: unknown) {
@@ -53,6 +56,11 @@
     } finally {
       loading = false;
     }
+  }
+
+  function confirmSnooze() {
+    if (!snoozeDate) return;
+    doAction('waiting', snoozeDate);
   }
 
   async function doBlock(data: Parameters<typeof createTask>[0]) {
@@ -126,7 +134,7 @@
       <p class="text-sm text-neutral-500">Alle Aufgaben erledigt oder blockiert.</p>
       <a href="/tasks" class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</a>
     </div>
-  {:else if task && !showEditForm && !showBlockForm}
+  {:else if task && !showEditForm && !showBlockForm && !showSnoozeForm}
     <TaskCard {task} />
 
     <!-- Action buttons -->
@@ -144,7 +152,7 @@
         class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
       >⛔ Erst das erledigen</button>
       <button
-        onclick={() => doAction('waiting')}
+        onclick={() => { showSnoozeForm = true; snoozeDate = ''; }}
         class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
       >⏳ Warte auf Input</button>
       <button
@@ -161,6 +169,37 @@
       onclick={fetchSuggestion}
       class="w-full py-2 text-sm text-neutral-500 hover:text-white transition-colors"
     >↻ Anderen vorschlagen</button>
+
+  {:else if showSnoozeForm}
+    <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">
+      <p class="font-medium text-sm text-neutral-300">Ab wann soll der Task wieder auftauchen?</p>
+      <input
+        bind:value={snoozeDate}
+        type="datetime-local"
+        class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <div class="flex gap-2">
+        <button
+          onclick={() => { const d = new Date(); d.setDate(d.getDate()+1); snoozeDate = d.toISOString().slice(0,16); confirmSnooze(); }}
+          class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
+        >Morgen</button>
+        <button
+          onclick={() => { const d = new Date(); d.setDate(d.getDate()+7); snoozeDate = d.toISOString().slice(0,16); confirmSnooze(); }}
+          class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
+        >Nächste Woche</button>
+      </div>
+      <div class="flex gap-3">
+        <button
+          onclick={confirmSnooze}
+          disabled={!snoozeDate}
+          class="flex-1 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 rounded-xl py-2.5 text-sm font-medium transition-colors"
+        >Zurückstellen</button>
+        <button
+          onclick={() => (showSnoozeForm = false)}
+          class="px-4 bg-neutral-800 hover:bg-neutral-700 rounded-xl text-sm transition-colors"
+        >Abbrechen</button>
+      </div>
+    </div>
 
   {:else if showBlockForm}
     <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">

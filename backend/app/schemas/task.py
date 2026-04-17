@@ -16,6 +16,7 @@ class TaskUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     deadline: datetime | None = None
+    status: TaskStatus | None = None
     category_ids: list[int] | None = None
     dependency_ids: list[int] | None = None
 
@@ -26,6 +27,8 @@ class TaskOut(BaseModel):
     description: str | None
     status: TaskStatus
     deadline: datetime | None
+    snoozed_until: datetime | None
+    skip_count: int
     owner_id: int
     created_at: datetime
     updated_at: datetime
@@ -47,12 +50,15 @@ class TaskOut(BaseModel):
             updated_at=task.updated_at,
             categories=task.categories,
             dependency_ids=[d.id for d in task.dependencies],
+            snoozed_until=task.snoozed_until,
+            skip_count=task.skip_count,
         )
 
 
 class TaskActionRequest(BaseModel):
     action: str  # start | done | waiting | skip | block
     new_task: TaskCreate | None = None  # only for action=block
+    snoozed_until: datetime | None = None  # only for action=waiting
 
 
 class SuggestRequest(BaseModel):

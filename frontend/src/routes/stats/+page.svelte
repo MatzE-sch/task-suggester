@@ -35,8 +35,8 @@
     categories = categories.filter((c) => c.id !== id);
   }
 
-  const totalDone = Object.values(stats).reduce((s, d) => s + d.count, 0);
-  const activeDays = Object.values(stats).filter((d) => d.count > 0).length;
+  $: totalDone = Object.values(stats).reduce((s, d) => s + d.count, 0);
+  $: activeDays = Object.values(stats).filter((d) => d.count > 0).length;
 </script>
 
 <div class="py-6 space-y-8">

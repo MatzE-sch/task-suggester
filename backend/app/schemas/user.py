@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class UserCreate(BaseModel):
     username: str
     password: str
+    invite_code: str
 
 
 class UserOut(BaseModel):

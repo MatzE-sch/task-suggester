@@ -5,27 +5,28 @@
   export let categories: Category[];
 
   const WEEKS = 26;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
-  // Build grid: array of weeks, each containing 7 days
-  const days: { date: string; count: number; categories: number[] }[] = [];
-  for (let i = WEEKS * 7 - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    days.push({ date: key, count: stats[key]?.count ?? 0, categories: stats[key]?.category_ids ?? [] });
-  }
+  type Day = { date: string; count: number; categories: number[] };
 
-  // Pad to start on Monday
-  const firstDow = new Date(days[0].date).getDay();
-  const pad = firstDow === 0 ? 6 : firstDow - 1;
-  const paddedDays = [...Array(pad).fill(null), ...days];
-
-  const weeks: typeof days[] = [];
-  for (let i = 0; i < paddedDays.length; i += 7) {
-    weeks.push(paddedDays.slice(i, i + 7) as typeof days);
-  }
+  $: weeks = (() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days: Day[] = [];
+    for (let i = WEEKS * 7 - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ date: key, count: stats[key]?.count ?? 0, categories: stats[key]?.category_ids ?? [] });
+    }
+    const firstDow = new Date(days[0].date).getDay();
+    const pad = firstDow === 0 ? 6 : firstDow - 1;
+    const paddedDays = [...Array(pad).fill(null), ...days];
+    const result: (Day | null)[][] = [];
+    for (let i = 0; i < paddedDays.length; i += 7) {
+      result.push(paddedDays.slice(i, i + 7));
+    }
+    return result;
+  })();
 
   function cellColor(count: number): string {
     if (count === 0) return '#1a1a1a';

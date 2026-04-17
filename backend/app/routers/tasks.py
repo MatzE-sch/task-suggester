@@ -58,7 +58,7 @@ def get_task(task_id: int, db: Session = Depends(get_db), user: User = Depends(g
 @router.patch("/{task_id}", response_model=TaskOut)
 def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = _get_own_task(task_id, user, db)
-    for field in ("title", "description", "deadline"):
+    for field in ("title", "description", "deadline", "status"):
         value = getattr(data, field)
         if value is not None:
             setattr(task, field, value)
@@ -83,11 +83,25 @@ def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get
         "start": TaskStatus.in_progress,
         "done": TaskStatus.done,
         "waiting": TaskStatus.waiting,
-        "skip": TaskStatus.skipped,
     }
 
-    if body.action in status_map:
+    if body.action == "skip":
+        task.skip_count += 1
+        # Reset to open so it stays eligible for suggestion
+        task.status = TaskStatus.open
+        log = ActivityLog(
+            user_id=user.id,
+            task_id=task.id,
+            action=body.action,
+            category_ids=[c.id for c in task.categories],
+            logged_date=date.today(),
+        )
+        db.add(log)
+
+    elif body.action in status_map:
         task.status = status_map[body.action]
+        if body.action == "waiting" and body.snoozed_until:
+            task.snoozed_until = body.snoozed_until
         log = ActivityLog(
             user_id=user.id,
             task_id=task.id,

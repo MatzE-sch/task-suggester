@@ -6,9 +6,14 @@ from app.models.task import Task, TaskStatus
 
 
 def _eligible_tasks(db: Session, user_id: int) -> list[Task]:
+    now = datetime.now(timezone.utc)
     tasks = (
         db.query(Task)
-        .filter(Task.owner_id == user_id, Task.status == TaskStatus.open)
+        .filter(
+            Task.owner_id == user_id,
+            Task.status == TaskStatus.open,
+            (Task.snoozed_until == None) | (Task.snoozed_until <= now),
+        )
         .all()
     )
     return [
@@ -17,9 +22,15 @@ def _eligible_tasks(db: Session, user_id: int) -> list[Task]:
     ]
 
 
+def _skip_weights(tasks: list[Task]) -> list[float]:
+    return [1.0 + t.skip_count for t in tasks]
+
+
 def suggest_random(db: Session, user_id: int) -> Task | None:
     eligible = _eligible_tasks(db, user_id)
-    return random.choice(eligible) if eligible else None
+    if not eligible:
+        return None
+    return random.choices(eligible, weights=_skip_weights(eligible), k=1)[0]
 
 
 def suggest_deadline(db: Session, user_id: int) -> Task | None:
@@ -36,8 +47,8 @@ def suggest_deadline(db: Session, user_id: int) -> Task | None:
         days_left = max((deadline - now).total_seconds() / 86400, 0.5)
         return 1.0 / days_left
 
-    weights = [weight(t) for t in eligible]
-    return random.choices(eligible, weights=weights, k=1)[0]
+    combined = [weight(t) * (1.0 + t.skip_count) for t in eligible]
+    return random.choices(eligible, weights=combined, k=1)[0]
 
 
 def suggest_by_category(db: Session, user_id: int, category_ids: list[int]) -> Task | None:
@@ -47,7 +58,9 @@ def suggest_by_category(db: Session, user_id: int, category_ids: list[int]) -> T
             t for t in eligible
             if any(c.id in category_ids for c in t.categories)
         ]
-    return random.choice(eligible) if eligible else None
+    if not eligible:
+        return None
+    return random.choices(eligible, weights=_skip_weights(eligible), k=1)[0]
 
 
 def get_suggestion(db: Session, user_id: int, mode: str, category_ids: list[int]) -> Task | None:

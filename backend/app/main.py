@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import SessionLocal
-from app.routers import auth, tasks, categories, suggest, export
+from app.routers import auth, tasks, categories, suggest, export, invites
 
 DEFAULT_CATEGORIES = [
     ("hardware", "#ef4444", "🔧"),
@@ -49,6 +49,7 @@ app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 app.include_router(categories.router, prefix="/categories", tags=["categories"])
 app.include_router(suggest.router, prefix="/suggest", tags=["suggest"])
 app.include_router(export.router, prefix="/export", tags=["export"])
+app.include_router(invites.router, prefix="/invites", tags=["invites"])
 
 
 @app.get("/health")

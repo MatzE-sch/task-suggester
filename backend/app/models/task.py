@@ -43,6 +43,8 @@ class Task(Base):
         Enum(TaskStatus), nullable=False, default=TaskStatus.open
     )
     deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    snoozed_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    skip_count: Mapped[int] = mapped_column(default=0, nullable=False)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
