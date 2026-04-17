@@ -52,7 +52,7 @@
   }
 </script>
 
-<div class="space-y-4">
+<div class="space-y-4" onkeydown={(e) => e.ctrlKey && e.key === 'Enter' && submit()}>
   <input
     bind:value={title}
     type="text"

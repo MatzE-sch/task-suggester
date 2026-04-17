@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { getSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
   import { loadCategories, categories } from '$lib/stores/categories';
+  import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
   import type { Task, SuggestMode, Category } from '$lib/types';
   import TaskCard from '$lib/components/TaskCard.svelte';
   import TaskForm from '$lib/components/TaskForm.svelte';
@@ -15,10 +17,15 @@
   let showBlockForm = false;
   let showEditForm = false;
   let showSnoozeForm = false;
+  let showNewTaskForm = false;
   let snoozeDate = '';
   let noTasks = false;
 
   onMount(async () => {
+    if (get(newTaskSignal) > 0) {
+      showNewTaskForm = true;
+      newTaskSignal.set(0);
+    }
     await loadCategories();
     await fetchTasks();
     await fetchSuggestion();
@@ -91,6 +98,19 @@
     }
   }
 
+  async function doNewTask(data: Parameters<typeof createTask>[0]) {
+    loading = true;
+    showNewTaskForm = false;
+    try {
+      await createTask(data);
+      await fetchTasks();
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Fehler';
+    } finally {
+      loading = false;
+    }
+  }
+
   function toggleModeCat(cat: Category) {
     selectedCategoryIds = selectedCategoryIds.includes(cat.id)
       ? selectedCategoryIds.filter((id) => id !== cat.id)
@@ -124,6 +144,18 @@
     </div>
   {/if}
 
+  <!-- New task inline form -->
+  {#if showNewTaskForm}
+    <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">
+      <p class="font-medium text-sm text-neutral-300">Neuen Task anlegen:</p>
+      <TaskForm
+        {allTasks}
+        onSubmit={doNewTask}
+        onCancel={() => (showNewTaskForm = false)}
+      />
+    </div>
+  {/if}
+
   <!-- Task card / states -->
   {#if loading && !task}
     <div class="bg-neutral-900 rounded-2xl p-6 animate-pulse h-32"></div>
@@ -132,74 +164,46 @@
       <p class="text-2xl">🎉</p>
       <p class="font-medium">Keine offenen Tasks!</p>
       <p class="text-sm text-neutral-500">Alle Aufgaben erledigt oder blockiert.</p>
-      <a href="/tasks" class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</a>
+      <button onclick={() => (showNewTaskForm = true)} class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</button>
     </div>
-  {:else if task && !showEditForm && !showBlockForm && !showSnoozeForm}
+  {:else if task && !showEditForm && !showBlockForm}
     <TaskCard {task} />
 
-    <!-- Action buttons -->
-    <div class="grid grid-cols-2 gap-3">
-      <button
-        onclick={() => doAction('done')}
-        class="bg-green-700 hover:bg-green-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-      >✅ Erledigt</button>
-      <button
-        onclick={() => doAction('start')}
-        class="bg-indigo-700 hover:bg-indigo-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-      >▶ Arbeite daran</button>
-      <button
-        onclick={() => (showBlockForm = true)}
-        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-      >⛔ Erst das erledigen</button>
-      <button
-        onclick={() => { showSnoozeForm = true; snoozeDate = ''; }}
-        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-      >⏳ Warte auf Input</button>
-      <button
-        onclick={() => doAction('skip')}
-        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-      >⏭ Jetzt nicht</button>
-      <button
-        onclick={() => (showEditForm = true)}
-        class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-      >✏️ Bearbeiten</button>
-    </div>
-
-    <button
-      onclick={fetchSuggestion}
-      class="w-full py-2 text-sm text-neutral-500 hover:text-white transition-colors"
-    >↻ Anderen vorschlagen</button>
-
-  {:else if showSnoozeForm}
-    <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">
-      <p class="font-medium text-sm text-neutral-300">Ab wann soll der Task wieder auftauchen?</p>
-      <input
-        bind:value={snoozeDate}
-        type="date"
-        class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      />
-      <div class="flex gap-2">
-        <button
-          onclick={() => { const d = new Date(); d.setDate(d.getDate()+1); snoozeDate = d.toISOString().slice(0,10); confirmSnooze(); }}
-          class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
-        >Morgen</button>
-        <button
-          onclick={() => { const d = new Date(); d.setDate(d.getDate()+7); snoozeDate = d.toISOString().slice(0,10); confirmSnooze(); }}
-          class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
-        >Nächste Woche</button>
+    {#if showSnoozeForm}
+      <!-- Snooze form (task card stays visible above) -->
+      <div
+        class="bg-neutral-900 rounded-2xl p-5 space-y-4"
+        onkeydown={(e) => e.ctrlKey && e.key === 'Enter' && confirmSnooze()}
+      >
+        <p class="font-medium text-sm text-neutral-300">Ab wann soll der Task wieder auftauchen?</p>
+        <input
+          bind:value={snoozeDate}
+          type="date"
+          class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <div class="flex gap-2">
+          <button
+            onclick={() => { const d = new Date(); d.setDate(d.getDate()+1); snoozeDate = d.toISOString().slice(0,10); confirmSnooze(); }}
+            class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
+          >Morgen</button>
+          <button
+            onclick={() => { const d = new Date(); d.setDate(d.getDate()+7); snoozeDate = d.toISOString().slice(0,10); confirmSnooze(); }}
+            class="flex-1 bg-neutral-800 hover:bg-neutral-700 rounded-xl py-2.5 text-sm transition-colors"
+          >Nächste Woche</button>
+        </div>
+        <div class="flex gap-3">
+          <button
+            onclick={confirmSnooze}
+            disabled={!snoozeDate}
+            class="flex-1 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 rounded-xl py-2.5 text-sm font-medium transition-colors"
+          >Zurückstellen</button>
+          <button
+            onclick={() => (showSnoozeForm = false)}
+            class="px-4 bg-neutral-800 hover:bg-neutral-700 rounded-xl text-sm transition-colors"
+          >Abbrechen</button>
+        </div>
       </div>
-      <div class="flex gap-3">
-        <button
-          onclick={confirmSnooze}
-          disabled={!snoozeDate}
-          class="flex-1 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 rounded-xl py-2.5 text-sm font-medium transition-colors"
-        >Zurückstellen</button>
-        <button
-          onclick={() => (showSnoozeForm = false)}
-          class="px-4 bg-neutral-800 hover:bg-neutral-700 rounded-xl text-sm transition-colors"
-        >Abbrechen</button>
-      </div>
-    </div>
+    {/if}
 
   {:else if showBlockForm}
     <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">
@@ -226,3 +230,78 @@
     <p class="text-red-400 text-sm text-center">{error}</p>
   {/if}
 </div>
+
+<!-- Action buttons: fixed on mobile, inline on desktop -->
+{#if task && !showEditForm && !showBlockForm && !showNewTaskForm}
+  <!-- Desktop (md+): inline below content -->
+  {#if !showSnoozeForm}
+    <div class="hidden md:block space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <button
+          onclick={() => doAction('done')}
+          class="bg-green-700 hover:bg-green-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >✅ Erledigt{#if $showShortcutHints}<kbd class="ml-1 text-xs bg-green-900 px-1 rounded">e</kbd>{/if}</button>
+        <button
+          onclick={() => doAction('start')}
+          class="bg-indigo-700 hover:bg-indigo-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >▶ Arbeite daran</button>
+        <button
+          onclick={() => (showBlockForm = true)}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >⛔ Erst das erledigen</button>
+        <button
+          onclick={() => { showSnoozeForm = true; snoozeDate = ''; }}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >⏳ Warte bis ...</button>
+        <button
+          onclick={() => doAction('skip')}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >⏭ Jetzt nicht</button>
+        <button
+          onclick={() => (showEditForm = true)}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >✏️ Bearbeiten</button>
+      </div>
+      <button
+        onclick={fetchSuggestion}
+        class="w-full py-2 text-sm text-neutral-500 hover:text-white transition-colors"
+      >↻ Anderen vorschlagen</button>
+    </div>
+  {/if}
+
+  <!-- Mobile: fixed bottom bar -->
+  {#if !showSnoozeForm}
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 p-3 space-y-2 z-30">
+      <button
+        onclick={fetchSuggestion}
+        class="w-full py-1.5 text-xs text-neutral-500 hover:text-white transition-colors"
+      >↻ Anderen vorschlagen</button>
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          onclick={() => doAction('done')}
+          class="bg-green-700 hover:bg-green-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >✅ Erledigt</button>
+        <button
+          onclick={() => doAction('start')}
+          class="bg-indigo-700 hover:bg-indigo-600 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >▶ Arbeite daran</button>
+        <button
+          onclick={() => (showBlockForm = true)}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >⛔ Erst das erledigen</button>
+        <button
+          onclick={() => { showSnoozeForm = true; snoozeDate = ''; }}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >⏳ Warte bis ...</button>
+        <button
+          onclick={() => doAction('skip')}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >⏭ Jetzt nicht</button>
+        <button
+          onclick={() => (showEditForm = true)}
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+        >✏️ Bearbeiten</button>
+      </div>
+    </div>
+  {/if}
+{/if}

@@ -93,7 +93,7 @@
 
   {#if showForm}
     <div class="bg-neutral-900 rounded-2xl p-5">
-      <TaskForm {tasks} onSubmit={handleCreate} onCancel={() => (showForm = false)} allTasks={tasks} />
+      <TaskForm onSubmit={handleCreate} onCancel={() => (showForm = false)} allTasks={tasks} />
     </div>
   {/if}
 

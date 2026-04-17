@@ -32,7 +32,7 @@
   }
 </script>
 
-<div class="min-h-screen flex items-center justify-center p-4">
+<div class="min-h-screen flex items-center justify-center p-4" onkeydown={(e) => e.ctrlKey && e.key === 'Enter' && submit()}>
   <div class="w-full max-w-sm">
     <h1 class="text-2xl font-bold text-center mb-8 text-indigo-400">✓ Task Suggester</h1>
 

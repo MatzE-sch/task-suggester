@@ -17,6 +17,10 @@ DEFAULT_CATEGORIES = [
     ("orga", "#0ea5e9", "📋"),
     ("fun", "#22c55e", "🎮"),
     ("chore", "#78716c", "🧹"),
+    ("freunde", "#f97316", "👫"),
+    ("draußen", "#22c55e", "🌿"),
+    ("sport", "#3b82f6", "🏃"),
+    ("spaß", "#a855f7", "🎉"),
 ]
 
 
