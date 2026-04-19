@@ -2,18 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Force digits to skip Noto Emoji and use the system font */
-@font-face {
-  font-family: 'Noto Emoji';
-  src: local('_');
-  unicode-range: U+0030-U+0039;
-}
-
 @layer base {
   body {
     @apply antialiased select-none;
-    font-family: 'Noto Emoji', ui-sans-serif, system-ui, sans-serif;
-    font-variant-emoji: text;
+    font-family: 'Inter', 'Noto Emoji', ui-sans-serif, system-ui, sans-serif;
   }
 }
 
