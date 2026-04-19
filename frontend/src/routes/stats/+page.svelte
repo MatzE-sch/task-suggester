@@ -80,7 +80,7 @@
             <div class="w-3 h-3 rounded-full" style="background-color: {cat.color}"></div>
             <span class="text-sm">{#if cat.icon}{cat.icon} {/if}{cat.name}</span>
           </div>
-          <button onclick={() => removeCategory(cat.id)} class="text-xs text-neutral-600 hover:text-red-400 transition-colors">🗑</button>
+          <button onclick={() => removeCategory(cat.id)} class="text-base text-neutral-600 hover:text-red-400 transition-colors">🗑</button>
         </div>
       {/each}
       {#if categories.length === 0}

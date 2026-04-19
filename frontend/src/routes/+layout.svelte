@@ -133,7 +133,7 @@
     <div class="border-t border-neutral-800 pt-4 space-y-1 text-sm">
       <p class="text-xs text-neutral-500 px-1 pb-1">{$user?.username}</p>
       <div class="flex rounded-xl overflow-hidden mb-1">
-        {#each [['dark', '🌙'], ['light', '☀️'], ['auto', '💻']] as [t, icon]}
+        {#each [['dark', '🌙'], ['light', '☀'], ['auto', 'auto']] as [t, icon]}
           <button
             onclick={() => theme.set(t as Theme)}
             class="flex-1 py-1.5 text-xs transition-colors {$theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white hover:bg-neutral-900'}"
@@ -171,7 +171,7 @@
       >
         <span class="px-4 py-2 text-xs text-neutral-500">{$user?.username}</span>
         <div class="flex mx-3 mb-1 rounded-xl overflow-hidden border border-neutral-800">
-          {#each [['dark', '🌙'], ['light', '☀️'], ['auto', '💻']] as [t, icon]}
+          {#each [['dark', '🌙'], ['light', '☀'], ['auto', 'auto']] as [t, icon]}
             <button
               onclick={() => { theme.set(t as Theme); }}
               class="flex-1 py-1.5 text-xs transition-colors {$theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white hover:bg-neutral-800'}"

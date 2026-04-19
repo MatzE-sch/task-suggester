@@ -5,6 +5,8 @@
 @layer base {
   body {
     @apply antialiased select-none;
+    font-family: 'Noto Emoji', ui-sans-serif, system-ui, sans-serif;
+    font-variant-emoji: text;
   }
 }
 

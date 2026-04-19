@@ -192,10 +192,10 @@
           </div>
           <div class="flex gap-2 shrink-0 items-center">
             {#if task.status !== 'done'}
-              <button onclick={() => markDone(task.id)} class="text-sm text-neutral-500 hover:text-green-400 transition-colors font-bold" title="Als erledigt markieren">✓</button>
+              <button onclick={() => markDone(task.id)} class="text-base text-neutral-500 hover:text-green-400 transition-colors font-bold" title="Als erledigt markieren">✓</button>
             {/if}
-            <button onclick={() => (editTask = task)} class="text-xs text-neutral-500 hover:text-white transition-colors">✏️</button>
-            <button onclick={() => handleDelete(task.id)} class="text-xs text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
+            <button onclick={() => (editTask = task)} class="text-base text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
+            <button onclick={() => handleDelete(task.id)} class="text-base text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
           </div>
         </div>
       {/each}

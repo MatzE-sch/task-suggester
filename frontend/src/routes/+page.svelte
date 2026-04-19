@@ -260,7 +260,7 @@
         <button
           onclick={() => (showEditForm = true)}
           class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-        >✏️ Bearbeiten</button>
+        >✏ Bearbeiten</button>
       </div>
       <button
         onclick={fetchSuggestion}
@@ -300,7 +300,7 @@
         <button
           onclick={() => (showEditForm = true)}
           class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-        >✏️ Bearbeiten</button>
+        >✏ Bearbeiten</button>
       </div>
     </div>
   {/if}
