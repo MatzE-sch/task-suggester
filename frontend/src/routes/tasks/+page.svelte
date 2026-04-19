@@ -2,13 +2,13 @@
   import { onMount } from 'svelte';
   import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs } from '$lib/api';
   import { loadCategories } from '$lib/stores/categories';
-  import type { Task, TaskStatus } from '$lib/types';
+  import type { Task, TaskStatus, TaskType } from '$lib/types';
   import TaskForm from '$lib/components/TaskForm.svelte';
 
   let tasks: Task[] = [];
   let showForm = false;
   let editTask: Task | null = null;
-  let filter: TaskStatus | 'all' = 'all';
+  let filter: TaskStatus | 'all' | 'recurring' = 'all';
   let loading = false;
 
   const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -73,29 +73,52 @@
     await load();
   }
 
-  $: filtered = filter === 'all' ? tasks : tasks.filter((t) => t.status === filter);
+  $: filtered = filter === 'all'
+    ? tasks
+    : filter === 'recurring'
+      ? tasks.filter((t) => t.task_type === 'recurring')
+      : tasks.filter((t) => t.status === filter);
+
+  function recurringProgress(task: Task): number {
+    if (!task.recurrence_days || !task.snoozed_until) return -1;
+    const due = new Date(task.snoozed_until).getTime();
+    const lastDone = due - task.recurrence_days * 86400000;
+    return (Date.now() - lastDone) / (task.recurrence_days * 86400000) * 100;
+  }
+
+  function progressColor(pct: number): string {
+    if (pct < 70) return 'text-green-500';
+    if (pct < 100) return 'text-yellow-400';
+    if (pct < 150) return 'text-orange-400';
+    return 'text-red-400';
+  }
 
   let ordered: { task: Task; depth: number }[] = [];
   $: {
-    const taskMap = new Map(tasks.map((t) => [t.id, t]));
-    const depOfFiltered = new Set(filtered.flatMap((t) => t.dependency_ids));
-    ordered = [];
-    const placed = new Set<number>();
-    function place(id: number, depth: number, ancestors: Set<number>) {
-      if (placed.has(id) || ancestors.has(id)) return;
-      const t = taskMap.get(id);
-      if (!t) return;
-      placed.add(id);
-      ordered.push({ task: t, depth });
-      const next = new Set(ancestors);
-      next.add(id);
-      for (const depId of t.dependency_ids) place(depId, depth + 1, next);
+    if (filter === 'recurring') {
+      ordered = filtered
+        .slice()
+        .sort((a, b) => recurringProgress(b) - recurringProgress(a))
+        .map((task) => ({ task, depth: 0 }));
+    } else {
+      const taskMap = new Map(tasks.map((t) => [t.id, t]));
+      const depOfFiltered = new Set(filtered.flatMap((t) => t.dependency_ids));
+      ordered = [];
+      const placed = new Set<number>();
+      function place(id: number, depth: number, ancestors: Set<number>) {
+        if (placed.has(id) || ancestors.has(id)) return;
+        const t = taskMap.get(id);
+        if (!t) return;
+        placed.add(id);
+        ordered.push({ task: t, depth });
+        const next = new Set(ancestors);
+        next.add(id);
+        for (const depId of t.dependency_ids) place(depId, depth + 1, next);
+      }
+      const topLevel = filtered.filter((t) => !depOfFiltered.has(t.id));
+      for (const task of topLevel) place(task.id, 0, new Set());
+      for (const task of filtered) place(task.id, 0, new Set());
     }
-    // First pass: tasks nothing depends on (true top-level)
-    const topLevel = filtered.filter((t) => !depOfFiltered.has(t.id));
-    for (const task of topLevel) place(task.id, 0, new Set());
-    // Second pass: remaining tasks (e.g. in cycles)
-    for (const task of filtered) place(task.id, 0, new Set());
   }
 </script>
 
@@ -135,7 +158,7 @@
 
     <!-- Status filter -->
     <div class="flex gap-2 flex-wrap">
-      {#each [['all', 'Alle'], ['open', 'Offen'], ['in_progress', 'In Arbeit'], ['waiting', 'Wartend'], ['done', 'Erledigt']] as [f, label]}
+      {#each [['all', 'Alle'], ['open', 'Offen'], ['in_progress', 'In Arbeit'], ['waiting', 'Wartend'], ['done', 'Erledigt'], ['recurring', '🔁 Wiederkehrend']] as [f, label]}
         <button
           onclick={() => (filter = f as typeof filter)}
           class="text-xs px-3 py-1.5 rounded-full transition-colors {filter === f ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'}"
@@ -155,7 +178,11 @@
                 <span class="text-xs px-1.5 py-0.5 rounded" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
               {/each}
               {#if task.task_type === 'recurring' && task.recurrence_days}
+                {@const pct = recurringProgress(task)}
                 <span class="text-xs text-neutral-500">🔁 {task.recurrence_days % 30 === 0 ? `${task.recurrence_days / 30}M` : task.recurrence_days % 7 === 0 ? `${task.recurrence_days / 7}W` : `${task.recurrence_days}T`}</span>
+                {#if pct >= 0}
+                  <span class="text-xs font-medium {progressColor(pct)}">{Math.round(pct)}%</span>
+                {/if}
               {/if}
               {#if task.deadline}
                 <span class="text-xs text-neutral-500">📅 {new Date(task.deadline).toLocaleDateString('de-DE')}</span>
