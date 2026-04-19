@@ -8,12 +8,16 @@ export interface Category {
   icon: string | null;
 }
 
+export type TaskType = 'normal' | 'deadline' | 'recurring';
+
 export interface Task {
   id: number;
   title: string;
   description: string | null;
+  task_type: TaskType;
   status: TaskStatus;
   deadline: string | null;
+  recurrence_days: number | null;
   snoozed_until: string | null;
   skip_count: number;
   owner_id: number;

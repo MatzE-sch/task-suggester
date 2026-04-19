@@ -1,12 +1,14 @@
 <script lang="ts">
-  import type { Category, Task, TaskStatus } from '$lib/types';
+  import type { Category, Task, TaskStatus, TaskType } from '$lib/types';
   import { categories } from '$lib/stores/categories';
 
   export let task: Partial<Task> = {};
   export let onSubmit: (data: {
     title: string;
     description?: string;
+    task_type: TaskType;
     deadline?: string;
+    recurrence_days?: number | null;
     status?: TaskStatus;
     category_ids: number[];
     dependency_ids: number[];
@@ -18,11 +20,27 @@
 
   let title = task.title ?? '';
   let description = task.description ?? '';
+  let taskType: TaskType = task.task_type ?? 'normal';
   let deadline = task.deadline ? task.deadline.slice(0, 10) : '';
   let selectedStatus: TaskStatus = task.status ?? 'open';
   let selectedCats: number[] = task.categories?.map((c) => c.id) ?? [];
   let selectedDeps: number[] = task.dependency_ids ?? [];
   let depsOpen = false;
+
+  // Recurrence: decompose stored days back into value+unit for display
+  function initRecurrence(days: number | null | undefined): { value: number; unit: 'days' | 'weeks' | 'months' } {
+    if (!days) return { value: 1, unit: 'weeks' };
+    if (days % 30 === 0) return { value: days / 30, unit: 'months' };
+    if (days % 7 === 0) return { value: days / 7, unit: 'weeks' };
+    return { value: days, unit: 'days' };
+  }
+  const initRec = initRecurrence(task.recurrence_days);
+  let recurrenceValue: number = initRec.value;
+  let recurrenceUnit: 'days' | 'weeks' | 'months' = initRec.unit;
+
+  $: recurrenceDays = recurrenceUnit === 'months' ? recurrenceValue * 30
+    : recurrenceUnit === 'weeks' ? recurrenceValue * 7
+    : recurrenceValue;
 
   const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
     { value: 'open', label: 'Offen' },
@@ -32,20 +50,45 @@
     { value: 'skipped', label: 'Übersprungen' },
   ];
 
+  const TYPE_OPTIONS: { value: TaskType; label: string }[] = [
+    { value: 'normal', label: 'Einfach' },
+    { value: 'deadline', label: 'Mit Deadline' },
+    { value: 'recurring', label: 'Wiederkehrend' },
+  ];
+
   function toggleCat(id: number) {
     selectedCats = selectedCats.includes(id) ? selectedCats.filter((c) => c !== id) : [...selectedCats, id];
   }
 
   function toggleDep(id: number) {
+    if (!selectedDeps.includes(id) && wouldCreateCycle(id)) return;
     selectedDeps = selectedDeps.includes(id) ? selectedDeps.filter((d) => d !== id) : [...selectedDeps, id];
   }
+
+  function wouldCreateCycle(candidateId: number): boolean {
+    const thisId = task.id;
+    if (!thisId) return false;
+    const taskMap = new Map(allTasks.map((t) => [t.id, t]));
+    function reaches(fromId: number, targetId: number, visited = new Set<number>()): boolean {
+      if (fromId === targetId) return true;
+      if (visited.has(fromId)) return false;
+      visited.add(fromId);
+      const t = taskMap.get(fromId);
+      return !!t && t.dependency_ids.some((d) => reaches(d, targetId, visited));
+    }
+    return reaches(candidateId, thisId);
+  }
+
+  $: circularIds = new Set(allTasks.filter((t) => t.id !== task.id && wouldCreateCycle(t.id)).map((t) => t.id));
 
   function submit() {
     if (!title.trim()) return;
     onSubmit({
       title: title.trim(),
       description: description.trim() || undefined,
-      deadline: deadline || undefined,
+      task_type: taskType,
+      deadline: taskType === 'deadline' ? (deadline || undefined) : undefined,
+      recurrence_days: taskType === 'recurring' ? recurrenceDays : null,
       ...(isEdit ? { status: selectedStatus } : {}),
       category_ids: selectedCats,
       dependency_ids: selectedDeps,
@@ -66,11 +109,44 @@
     rows="3"
     class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
   ></textarea>
-  <input
-    bind:value={deadline}
-    type="date"
-    class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-  />
+
+  <!-- Task-Typ Auswahl -->
+  <div class="flex gap-2">
+    {#each TYPE_OPTIONS as opt}
+      <button
+        type="button"
+        onclick={() => (taskType = opt.value)}
+        class="flex-1 text-xs py-2 rounded-xl transition-colors {taskType === opt.value ? 'bg-indigo-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'}"
+      >{opt.label}</button>
+    {/each}
+  </div>
+
+  {#if taskType === 'deadline'}
+    <input
+      bind:value={deadline}
+      type="date"
+      class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    />
+  {/if}
+
+  {#if taskType === 'recurring'}
+    <div class="flex gap-2">
+      <input
+        bind:value={recurrenceValue}
+        type="number"
+        min="1"
+        class="w-24 bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <select
+        bind:value={recurrenceUnit}
+        class="flex-1 bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <option value="days">Tage</option>
+        <option value="weeks">Wochen</option>
+        <option value="months">Monate</option>
+      </select>
+    </div>
+  {/if}
 
   {#if isEdit}
     <div>
@@ -119,9 +195,9 @@
       {#if depsOpen}
         <div class="mt-2 space-y-1 max-h-32 overflow-y-auto">
           {#each allTasks.filter((t) => t.id !== task.id && t.status !== 'done') as t}
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={selectedDeps.includes(t.id)} onchange={() => toggleDep(t.id)} class="accent-indigo-500" />
-              <span class="text-sm text-neutral-300">{t.title}</span>
+            <label class="flex items-center gap-2 {circularIds.has(t.id) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}">
+              <input type="checkbox" checked={selectedDeps.includes(t.id)} onchange={() => toggleDep(t.id)} disabled={circularIds.has(t.id)} class="accent-indigo-500" />
+              <span class="text-sm text-neutral-300">{t.title}{circularIds.has(t.id) ? ' (zirkulär)' : ''}</span>
             </label>
           {/each}
         </div>

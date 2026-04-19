@@ -64,7 +64,9 @@ export async function getTasks(): Promise<Task[]> {
 export async function createTask(data: {
   title: string;
   description?: string;
+  task_type?: string;
   deadline?: string;
+  recurrence_days?: number | null;
   category_ids?: number[];
   dependency_ids?: number[];
 }): Promise<Task> {
@@ -74,7 +76,9 @@ export async function createTask(data: {
 export async function updateTask(id: number, data: Partial<{
   title: string;
   description: string;
+  task_type: string;
   deadline: string | null;
+  recurrence_days: number | null;
   status: string;
   category_ids: number[];
   dependency_ids: number[];

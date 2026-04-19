@@ -42,7 +42,9 @@ class Task(Base):
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus), nullable=False, default=TaskStatus.open
     )
+    task_type: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
     deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    recurrence_days: Mapped[int | None] = mapped_column(nullable=True)
     snoozed_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     skip_count: Mapped[int] = mapped_column(default=0, nullable=False)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

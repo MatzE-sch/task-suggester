@@ -36,6 +36,13 @@
     {/each}
   </div>
 
+  {#if task.task_type === 'recurring' && task.recurrence_days}
+    {@const d = task.recurrence_days}
+    <p class="text-sm text-neutral-500">
+      🔁 alle {d % 30 === 0 ? `${d / 30} Monat${d / 30 !== 1 ? 'e' : ''}` : d % 7 === 0 ? `${d / 7} Woche${d / 7 !== 1 ? 'n' : ''}` : `${d} Tag${d !== 1 ? 'e' : ''}`}
+    </p>
+  {/if}
+
   {#if task.deadline}
     <p class="text-sm {deadlineClass(task.deadline)}">
       📅 {formatDeadline(task.deadline)}

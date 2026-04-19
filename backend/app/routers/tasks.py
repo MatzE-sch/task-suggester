@@ -1,4 +1,4 @@
-from datetime import date, timezone
+from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -39,7 +39,9 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db), user: User = De
     task = Task(
         title=data.title,
         description=data.description,
+        task_type=data.task_type,
         deadline=data.deadline,
+        recurrence_days=data.recurrence_days,
         owner_id=user.id,
     )
     db.add(task)
@@ -58,7 +60,7 @@ def get_task(task_id: int, db: Session = Depends(get_db), user: User = Depends(g
 @router.patch("/{task_id}", response_model=TaskOut)
 def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = _get_own_task(task_id, user, db)
-    for field in ("title", "description", "deadline", "status"):
+    for field in ("title", "description", "task_type", "deadline", "recurrence_days", "status"):
         value = getattr(data, field)
         if value is not None:
             setattr(task, field, value)
@@ -99,9 +101,13 @@ def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get
         db.add(log)
 
     elif body.action in status_map:
-        task.status = status_map[body.action]
-        if body.action == "waiting" and body.snoozed_until:
-            task.snoozed_until = body.snoozed_until
+        if body.action == "done" and task.task_type == "recurring" and task.recurrence_days:
+            task.status = TaskStatus.open
+            task.snoozed_until = datetime.now(timezone.utc) + timedelta(days=task.recurrence_days)
+        else:
+            task.status = status_map[body.action]
+            if body.action == "waiting" and body.snoozed_until:
+                task.snoozed_until = body.snoozed_until
         log = ActivityLog(
             user_id=user.id,
             task_id=task.id,

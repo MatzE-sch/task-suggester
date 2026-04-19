@@ -75,19 +75,27 @@
 
   $: filtered = filter === 'all' ? tasks : tasks.filter((t) => t.status === filter);
 
-  let ordered: { task: Task; indent: boolean }[] = [];
+  let ordered: { task: Task; depth: number }[] = [];
   $: {
     const taskMap = new Map(tasks.map((t) => [t.id, t]));
     const depOfFiltered = new Set(filtered.flatMap((t) => t.dependency_ids));
-    const topLevel = filtered.filter((t) => !depOfFiltered.has(t.id));
     ordered = [];
-    for (const task of topLevel) {
-      ordered.push({ task, indent: false });
-      for (const depId of task.dependency_ids) {
-        const dep = taskMap.get(depId);
-        if (dep) ordered.push({ task: dep, indent: true });
-      }
+    const placed = new Set<number>();
+    function place(id: number, depth: number, ancestors: Set<number>) {
+      if (placed.has(id) || ancestors.has(id)) return;
+      const t = taskMap.get(id);
+      if (!t) return;
+      placed.add(id);
+      ordered.push({ task: t, depth });
+      const next = new Set(ancestors);
+      next.add(id);
+      for (const depId of t.dependency_ids) place(depId, depth + 1, next);
     }
+    // First pass: tasks nothing depends on (true top-level)
+    const topLevel = filtered.filter((t) => !depOfFiltered.has(t.id));
+    for (const task of topLevel) place(task.id, 0, new Set());
+    // Second pass: remaining tasks (e.g. in cycles)
+    for (const task of filtered) place(task.id, 0, new Set());
   }
 </script>
 
@@ -137,8 +145,8 @@
 
     <!-- Task list -->
     <div class="space-y-2">
-      {#each ordered as { task, indent } (task.id)}
-        <div class="bg-neutral-900 rounded-xl p-4 flex items-start justify-between gap-3 {indent ? 'ml-6 border-l-2 border-neutral-700' : ''}">
+      {#each ordered as { task, depth } (task.id)}
+        <div class="bg-neutral-900 rounded-xl p-4 flex items-start justify-between gap-3" style="margin-left: {depth * 1.5}rem; {depth > 0 ? 'border-left: 2px solid #404040;' : ''}">
           <div class="flex-1 min-w-0">
             <p class="font-medium truncate">{task.title}</p>
             <div class="flex items-center gap-3 mt-1 flex-wrap">
@@ -146,6 +154,9 @@
               {#each task.categories as cat}
                 <span class="text-xs px-1.5 py-0.5 rounded" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
               {/each}
+              {#if task.task_type === 'recurring' && task.recurrence_days}
+                <span class="text-xs text-neutral-500">🔁 {task.recurrence_days % 30 === 0 ? `${task.recurrence_days / 30}M` : task.recurrence_days % 7 === 0 ? `${task.recurrence_days / 7}W` : `${task.recurrence_days}T`}</span>
+              {/if}
               {#if task.deadline}
                 <span class="text-xs text-neutral-500">📅 {new Date(task.deadline).toLocaleDateString('de-DE')}</span>
               {/if}

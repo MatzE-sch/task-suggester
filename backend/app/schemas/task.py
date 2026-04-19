@@ -7,7 +7,9 @@ from app.schemas.category import CategoryOut
 class TaskCreate(BaseModel):
     title: str
     description: str | None = None
+    task_type: str = "normal"
     deadline: datetime | None = None
+    recurrence_days: int | None = None
     category_ids: list[int] = []
     dependency_ids: list[int] = []
 
@@ -15,7 +17,9 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
+    task_type: str | None = None
     deadline: datetime | None = None
+    recurrence_days: int | None = None
     status: TaskStatus | None = None
     category_ids: list[int] | None = None
     dependency_ids: list[int] | None = None
@@ -25,8 +29,10 @@ class TaskOut(BaseModel):
     id: int
     title: str
     description: str | None
+    task_type: str
     status: TaskStatus
     deadline: datetime | None
+    recurrence_days: int | None
     snoozed_until: datetime | None
     skip_count: int
     owner_id: int
@@ -43,8 +49,10 @@ class TaskOut(BaseModel):
             id=task.id,
             title=task.title,
             description=task.description,
+            task_type=task.task_type,
             status=task.status,
             deadline=task.deadline,
+            recurrence_days=task.recurrence_days,
             owner_id=task.owner_id,
             created_at=task.created_at,
             updated_at=task.updated_at,
