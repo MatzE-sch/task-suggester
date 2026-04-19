@@ -1,8 +1,37 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.models.task import Task, TaskStatus
+
+MAX_RECURRENCE_WEIGHT = 8.0
+
+
+def _is_eligible_snooze(task: Task, now: datetime) -> bool:
+    if task.snoozed_until is None:
+        return True
+    su = task.snoozed_until.replace(tzinfo=timezone.utc) if task.snoozed_until.tzinfo is None else task.snoozed_until
+    if su <= now:
+        return True
+    if task.task_type == 'recurring' and task.recurrence_days:
+        early = su - timedelta(days=task.recurrence_days * 0.3)
+        return now >= early
+    return False
+
+
+def _recurring_weight(task: Task, now: datetime) -> float:
+    if task.task_type != 'recurring' or not task.recurrence_days or task.snoozed_until is None:
+        return 1.0
+    su = task.snoozed_until.replace(tzinfo=timezone.utc) if task.snoozed_until.tzinfo is None else task.snoozed_until
+    last_done = su - timedelta(days=task.recurrence_days)
+    elapsed = (now - last_done).total_seconds() / 86400
+    progress = elapsed / task.recurrence_days
+
+    if progress < 0.7:
+        return 0.05
+    if progress <= 1.0:
+        return 0.1 + (progress - 0.7) / 0.3 * 0.9
+    return min(1.0 + (progress - 1.0) * 3.0, MAX_RECURRENCE_WEIGHT)
 
 
 def _eligible_tasks(db: Session, user_id: int) -> list[Task]:
@@ -12,46 +41,48 @@ def _eligible_tasks(db: Session, user_id: int) -> list[Task]:
         .filter(
             Task.owner_id == user_id,
             Task.status == TaskStatus.open,
-            (Task.snoozed_until == None) | (Task.snoozed_until <= now),
         )
         .all()
     )
     return [
         t for t in tasks
-        if all(dep.status == TaskStatus.done for dep in t.dependencies)
+        if _is_eligible_snooze(t, now)
+        and all(dep.status == TaskStatus.done for dep in t.dependencies)
     ]
 
 
-def _skip_weights(tasks: list[Task]) -> list[float]:
-    return [1.0 + t.skip_count for t in tasks]
+def _skip_weights(tasks: list[Task], now: datetime) -> list[float]:
+    return [_recurring_weight(t, now) * (1.0 + t.skip_count) for t in tasks]
 
 
 def suggest_random(db: Session, user_id: int) -> Task | None:
+    now = datetime.now(timezone.utc)
     eligible = _eligible_tasks(db, user_id)
     if not eligible:
         return None
-    return random.choices(eligible, weights=_skip_weights(eligible), k=1)[0]
+    return random.choices(eligible, weights=_skip_weights(eligible, now), k=1)[0]
 
 
 def suggest_deadline(db: Session, user_id: int) -> Task | None:
+    now = datetime.now(timezone.utc)
     eligible = _eligible_tasks(db, user_id)
     if not eligible:
         return None
 
-    now = datetime.now(timezone.utc)
-
     def weight(task: Task) -> float:
+        if task.task_type == 'recurring':
+            return _recurring_weight(task, now) * (1.0 + task.skip_count)
         if task.deadline is None:
-            return 0.1
+            return 0.1 * (1.0 + task.skip_count)
         deadline = task.deadline.replace(tzinfo=timezone.utc) if task.deadline.tzinfo is None else task.deadline
         days_left = max((deadline - now).total_seconds() / 86400, 0.5)
-        return 1.0 / days_left
+        return (1.0 / days_left) * (1.0 + task.skip_count)
 
-    combined = [weight(t) * (1.0 + t.skip_count) for t in eligible]
-    return random.choices(eligible, weights=combined, k=1)[0]
+    return random.choices(eligible, weights=[weight(t) for t in eligible], k=1)[0]
 
 
 def suggest_by_category(db: Session, user_id: int, category_ids: list[int]) -> Task | None:
+    now = datetime.now(timezone.utc)
     eligible = _eligible_tasks(db, user_id)
     if category_ids:
         eligible = [
@@ -60,7 +91,7 @@ def suggest_by_category(db: Session, user_id: int, category_ids: list[int]) -> T
         ]
     if not eligible:
         return None
-    return random.choices(eligible, weights=_skip_weights(eligible), k=1)[0]
+    return random.choices(eligible, weights=_skip_weights(eligible, now), k=1)[0]
 
 
 def get_suggestion(db: Session, user_id: int, mode: str, category_ids: list[int]) -> Task | None:
