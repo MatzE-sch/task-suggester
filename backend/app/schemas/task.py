@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from pydantic import BaseModel
 from app.models.task import TaskStatus
 from app.schemas.category import CategoryOut
@@ -67,6 +67,7 @@ class TaskActionRequest(BaseModel):
     action: str  # start | done | waiting | skip | block
     new_task: TaskCreate | None = None  # only for action=block
     snoozed_until: datetime | None = None  # only for action=waiting
+    logged_date: date | None = None  # client local date, falls back to server date
 
 
 class SuggestRequest(BaseModel):

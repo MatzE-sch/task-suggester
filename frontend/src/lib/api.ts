@@ -96,9 +96,11 @@ export async function taskAction(id: number, action: string, newTask?: {
   deadline?: string;
   category_ids?: number[];
 }, snoozedUntil?: string): Promise<Task> {
+  const d = new Date();
+  const logged_date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return request<Task>(`/tasks/${id}/action`, {
     method: 'POST',
-    body: JSON.stringify({ action, new_task: newTask, snoozed_until: snoozedUntil }),
+    body: JSON.stringify({ action, new_task: newTask, snoozed_until: snoozedUntil, logged_date }),
   });
 }
 

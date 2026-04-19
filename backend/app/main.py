@@ -11,17 +11,18 @@ DEFAULT_CATEGORIES = [
     ("software", "#6366f1", "💻"),
     ("basteln", "#f59e0b", "🪚"),
     ("löten", "#f97316", "🔩"),
-    ("3d-design", "#8b5cf6", "🖊️"),
-    ("3d-druck", "#ec4899", "🖨️"),
-    ("papierkram", "#14243b", "📄"),
+    ("3d-design", "#8b5cf6", "🖊"),
+    ("3d-druck", "#ec4899", "🖨"),
+    ("papierkram", "#e5e7eb", "📄"),
     ("orga", "#0ea5e9", "📋"),
-    ("fun", "#22c55e", "🎮"),
-    ("chore", "#28211c", "🧹"),
+    ("chore", "#6b7280", "🧹"),
     ("freunde", "#f97316", "👫"),
     ("draußen", "#22c55e", "🌿"),
     ("sport", "#3b82f6", "🏃"),
     ("spaß", "#a855f7", "🎉"),
 ]
+
+REMOVE_CATEGORIES = ["fun"]
 
 
 @asynccontextmanager
@@ -29,8 +30,16 @@ async def lifespan(_app: FastAPI):
     from app.models.category import Category
     db = SessionLocal()
     try:
+        for name in REMOVE_CATEGORIES:
+            cat = db.query(Category).filter(Category.name == name).first()
+            if cat:
+                db.delete(cat)
         for name, color, icon in DEFAULT_CATEGORIES:
-            if not db.query(Category).filter(Category.name == name).first():
+            existing = db.query(Category).filter(Category.name == name).first()
+            if existing:
+                existing.color = color
+                existing.icon = icon
+            else:
                 db.add(Category(name=name, color=color, icon=icon))
         db.commit()
     finally:

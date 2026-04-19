@@ -1,6 +1,7 @@
+from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.activity import ActivityLog
@@ -96,7 +97,7 @@ def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get
             task_id=task.id,
             action=body.action,
             category_ids=[c.id for c in task.categories],
-            logged_date=date.today(),
+            logged_date=body.logged_date or date.today(),
         )
         db.add(log)
 
@@ -113,7 +114,7 @@ def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get
             task_id=task.id,
             action=body.action,
             category_ids=[c.id for c in task.categories],
-            logged_date=date.today(),
+            logged_date=body.logged_date or date.today(),
         )
         db.add(log)
 
@@ -143,6 +144,7 @@ def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get
 def activity_stats(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     logs = (
         db.query(ActivityLog)
+        .options(joinedload(ActivityLog.task).joinedload(Task.categories))
         .filter(ActivityLog.user_id == user.id, ActivityLog.action == "done")
         .all()
     )
@@ -150,11 +152,17 @@ def activity_stats(db: Session = Depends(get_db), user: User = Depends(get_curre
     for log in logs:
         day = log.logged_date.isoformat()
         if day not in result:
-            result[day] = {"count": 0, "categories": set()}
+            result[day] = {"count": 0, "category_counts": Counter()}
         result[day]["count"] += 1
-        result[day]["categories"].update(log.category_ids)
-
+        cat_ids = list(log.category_ids or [])
+        if not cat_ids and log.task:
+            cat_ids = [c.id for c in log.task.categories]
+        result[day]["category_counts"].update(cat_ids)
     return {
-        day: {"count": data["count"], "category_ids": list(data["categories"])}
+        day: {
+            "count": data["count"],
+            "category_ids": list(data["category_counts"].keys()),
+            "category_counts": dict(data["category_counts"]),
+        }
         for day, data in result.items()
     }

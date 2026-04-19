@@ -9,7 +9,7 @@
 
   const WEEKS = 26;
 
-  type Day = { date: string; count: number; categories: number[] };
+  type Day = { date: string; count: number; categories: number[]; categoryCounts: Record<string, number> };
 
   $: weeks = (() => {
     const today = new Date();
@@ -18,8 +18,8 @@
     for (let i = WEEKS * 7 - 1; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      days.push({ date: key, count: stats[key]?.count ?? 0, categories: stats[key]?.category_ids ?? [] });
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      days.push({ date: key, count: stats[key]?.count ?? 0, categories: stats[key]?.category_ids ?? [], categoryCounts: stats[key]?.category_counts ?? {} });
     }
     const firstDow = new Date(days[0].date).getDay();
     const pad = firstDow === 0 ? 6 : firstDow - 1;
@@ -31,12 +31,31 @@
     return result;
   })();
 
-  function cellColor(count: number): string {
-    if (count === 0) return 'var(--calendar-empty)';
-    if (count === 1) return '#312e81';
-    if (count === 2) return '#4338ca';
-    if (count <= 4) return '#6366f1';
-    return '#818cf8';
+  function cellStyle(day: Day): string {
+    if (day.count === 0) return `background-color: var(--calendar-empty)`;
+    const opacity = day.count === 1 ? 0.55 : day.count === 2 ? 0.7 : day.count <= 4 ? 0.85 : 1;
+    const entries = Object.entries(day.categoryCounts)
+      .map(([id, cnt]) => ({ color: categories.find(c => Number(c.id) === Number(id))?.color, cnt }))
+      .filter((e): e is { color: string; cnt: number } => !!e.color);
+    if (entries.length === 0) return `background-color: #6366f1; opacity: ${opacity}`;
+    if (entries.length === 1) return `background-color: ${entries[0].color}; opacity: ${opacity}`;
+    const total = entries.reduce((s, e) => s + e.cnt, 0);
+    let pos = 0;
+    const stops = entries.flatMap(({ color, cnt }) => {
+      const end = pos + (cnt / total) * 100;
+      const s = [`${color} ${pos.toFixed(1)}%`, `${color} ${end.toFixed(1)}%`];
+      pos = end;
+      return s;
+    });
+    return `background: linear-gradient(to bottom, ${stops.join(', ')}); opacity: ${opacity}`;
+  }
+
+  function cellTitle(day: Day): string {
+    const names = day.categories
+      .map(id => categories.find(c => Number(c.id) === Number(id))?.name)
+      .filter(Boolean).join(', ');
+    const base = `${formatDate(day.date)}: ${day.count} erledigt`;
+    return names ? `${base} (${names})` : base;
   }
 
   function formatDate(d: string): string {
@@ -58,12 +77,12 @@
         {#each week as day}
           {#if day}
             <div
-              class="w-3 h-3 rounded-sm cursor-pointer"
-              style="background-color: {cellColor(day.count)}"
-              title="{formatDate(day.date)}: {day.count} erledigt"
+              class="w-5 h-5 rounded-sm cursor-pointer"
+              style={cellStyle(day)}
+              title={cellTitle(day)}
             ></div>
           {:else}
-            <div class="w-3 h-3"></div>
+            <div class="w-5 h-5"></div>
           {/if}
         {/each}
       </div>
@@ -71,17 +90,9 @@
     <!-- Day labels -->
     <div class="flex flex-col gap-1 ml-1 shrink-0">
       {#each DOW as d}
-        <div class="h-3 w-5 text-[9px] text-neutral-600 flex items-center">{d}</div>
+        <div class="h-5 w-5 text-[9px] text-neutral-600 flex items-center">{d}</div>
       {/each}
     </div>
   </div>
 
-  <!-- Legend -->
-  <div class="flex items-center gap-2 text-xs text-neutral-500">
-    <span>Weniger</span>
-    {#each [0, 1, 2, 3, 5] as n}
-      <div class="w-3 h-3 rounded-sm" style="background-color: {cellColor(n)}"></div>
-    {/each}
-    <span>Mehr</span>
-  </div>
 </div>

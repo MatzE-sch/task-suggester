@@ -36,6 +36,7 @@ export interface User {
 export interface ActivityDay {
   count: number;
   category_ids: number[];
+  category_counts: Record<string, number>;
 }
 
 export type ActivityStats = Record<string, ActivityDay>;
