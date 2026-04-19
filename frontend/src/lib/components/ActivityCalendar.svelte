@@ -33,21 +33,24 @@
 
   function cellStyle(day: Day): string {
     if (day.count === 0) return `background-color: var(--calendar-empty)`;
-    const opacity = day.count === 1 ? 0.55 : day.count === 2 ? 0.7 : day.count <= 4 ? 0.85 : 1;
+    const MAX_TASKS = 8;
+    const fillPct = Math.min(day.count / MAX_TASKS, 1) * 100;
+    const half = (100 - fillPct) / 2;
     const entries = Object.entries(day.categoryCounts)
-      .map(([id, cnt]) => ({ color: categories.find(c => Number(c.id) === Number(id))?.color, cnt }))
-      .filter((e): e is { color: string; cnt: number } => !!e.color);
-    if (entries.length === 0) return `background-color: #6366f1; opacity: ${opacity}`;
-    if (entries.length === 1) return `background-color: ${entries[0].color}; opacity: ${opacity}`;
-    const total = entries.reduce((s, e) => s + e.cnt, 0);
+      .map(([id, cnt]) => { const cat = categories.find(c => Number(c.id) === Number(id)); return { color: cat?.color, sort_order: cat?.sort_order ?? 999, cnt }; })
+      .filter((e): e is { color: string; sort_order: number; cnt: number } => !!e.color)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const colors = entries.length === 0 ? [{ color: '#6366f1', cnt: 1 }] : entries;
+    const total = colors.reduce((s, e) => s + e.cnt, 0);
+    const stops: string[] = [`var(--calendar-empty) ${half.toFixed(1)}%`];
     let pos = 0;
-    const stops = entries.flatMap(({ color, cnt }) => {
-      const end = pos + (cnt / total) * 100;
-      const s = [`${color} ${pos.toFixed(1)}%`, `${color} ${end.toFixed(1)}%`];
-      pos = end;
-      return s;
-    });
-    return `background: linear-gradient(to bottom, ${stops.join(', ')}); opacity: ${opacity}`;
+    for (const { color, cnt } of colors) {
+      const segStart = half + pos;
+      pos += (cnt / total) * fillPct;
+      stops.push(`${color} ${segStart.toFixed(1)}%`, `${color} ${(half + pos).toFixed(1)}%`);
+    }
+    stops.push(`var(--calendar-empty) ${(half + fillPct).toFixed(1)}%`);
+    return `background: linear-gradient(-30deg, ${stops.join(', ')})`;
   }
 
   function cellTitle(day: Day): string {

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -12,14 +13,15 @@ router = APIRouter()
 
 @router.get("", response_model=list[CategoryOut])
 def list_categories(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return db.query(Category).order_by(Category.name).all()
+    return db.query(Category).order_by(Category.sort_order).all()
 
 
 @router.post("", response_model=CategoryOut, status_code=201)
 def create_category(data: CategoryCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     if db.query(Category).filter(Category.name == data.name).first():
         raise HTTPException(status_code=400, detail="Category already exists")
-    cat = Category(**data.model_dump())
+    max_order = db.query(func.max(Category.sort_order)).scalar() or 0
+    cat = Category(**data.model_dump(), sort_order=max_order + 1)
     db.add(cat)
     db.commit()
     db.refresh(cat)

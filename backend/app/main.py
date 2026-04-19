@@ -6,20 +6,21 @@ from app.config import settings
 from app.database import SessionLocal
 from app.routers import auth, tasks, categories, suggest, export, invites
 
+# Ordered by user preference [2,5,6,1,4,3,11,12,14,13,8,7,10]
 DEFAULT_CATEGORIES = [
-    ("hardware", "#ef4444", "🔧"),
-    ("software", "#6366f1", "💻"),
-    ("basteln", "#f59e0b", "🪚"),
-    ("löten", "#f97316", "🔩"),
-    ("3d-design", "#8b5cf6", "🖊"),
-    ("3d-druck", "#ec4899", "🖨"),
+    ("software",   "#6366f1", "💻"),
+    ("3d-design",  "#8b5cf6", "🖊"),
+    ("3d-druck",   "#ec4899", "🖨"),
+    ("hardware",   "#ef4444", "🔧"),
+    ("löten",      "#f97316", "🔩"),
+    ("basteln",    "#f59e0b", "🪚"),
+    ("freunde",    "#15803d", "👫"),
+    ("draußen",    "#22c55e", "🌿"),
+    ("spaß",       "#a855f7", "🎉"),
+    ("sport",      "#3b82f6", "🏃"),
+    ("orga",       "#0ea5e9", "📋"),
     ("papierkram", "#e5e7eb", "📄"),
-    ("orga", "#0ea5e9", "📋"),
-    ("chore", "#6b7280", "🧹"),
-    ("freunde", "#f97316", "👫"),
-    ("draußen", "#22c55e", "🌿"),
-    ("sport", "#3b82f6", "🏃"),
-    ("spaß", "#a855f7", "🎉"),
+    ("chore",      "#6b7280", "🧹"),
 ]
 
 REMOVE_CATEGORIES = ["fun"]
@@ -27,20 +28,28 @@ REMOVE_CATEGORIES = ["fun"]
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    from sqlalchemy import inspect, text
     from app.models.category import Category
+    # Migrate: add sort_order column if missing
+    with engine.connect() as conn:
+        cols = [c["name"] for c in inspect(engine).get_columns("categories")]
+        if "sort_order" not in cols:
+            conn.execute(text("ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"))
+            conn.commit()
     db = SessionLocal()
     try:
         for name in REMOVE_CATEGORIES:
             cat = db.query(Category).filter(Category.name == name).first()
             if cat:
                 db.delete(cat)
-        for name, color, icon in DEFAULT_CATEGORIES:
+        for sort_order, (name, color, icon) in enumerate(DEFAULT_CATEGORIES):
             existing = db.query(Category).filter(Category.name == name).first()
             if existing:
                 existing.color = color
                 existing.icon = icon
+                existing.sort_order = sort_order
             else:
-                db.add(Category(name=name, color=color, icon=icon))
+                db.add(Category(name=name, color=color, icon=icon, sort_order=sort_order))
         db.commit()
     finally:
         db.close()

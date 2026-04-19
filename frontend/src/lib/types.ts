@@ -6,6 +6,7 @@ export interface Category {
   name: string;
   color: string;
   icon: string | null;
+  sort_order: number;
 }
 
 export type TaskType = 'normal' | 'deadline' | 'recurring';

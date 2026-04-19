@@ -125,7 +125,7 @@ export async function createCategory(data: { name: string; color: string; icon?:
   return request<Category>('/categories', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updateCategory(id: number, data: Partial<{ name: string; color: string; icon: string }>): Promise<Category> {
+export async function updateCategory(id: number, data: Partial<{ name: string; color: string; icon: string; sort_order: number }>): Promise<Category> {
   return request<Category>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 

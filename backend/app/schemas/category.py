@@ -11,6 +11,7 @@ class CategoryUpdate(BaseModel):
     name: str | None = None
     color: str | None = None
     icon: str | None = None
+    sort_order: int | None = None
 
 
 class CategoryOut(BaseModel):
@@ -18,5 +19,6 @@ class CategoryOut(BaseModel):
     name: str
     color: str
     icon: str | None
+    sort_order: int
 
     model_config = {"from_attributes": True}
