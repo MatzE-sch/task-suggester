@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import SessionLocal
+from app.database import SessionLocal, engine
 from app.routers import auth, tasks, categories, suggest, export, invites
 
 # Ordered by user preference [2,5,6,1,4,3,11,12,14,13,8,7,10]
