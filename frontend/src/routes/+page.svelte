@@ -271,7 +271,7 @@
 
   <!-- Mobile: fixed bottom bar -->
   {#if !showSnoozeForm}
-    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 p-3 space-y-2 z-30">
+    <div class="md:hidden fixed bottom-16 left-0 right-0 bg-neutral-950/95 backdrop-blur border-t border-neutral-800 p-3 space-y-2 z-30">
       <button
         onclick={fetchSuggestion}
         class="w-full py-1.5 text-xs text-neutral-500 hover:text-white transition-colors"

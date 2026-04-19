@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Task } from '$lib/types';
+  import { longpress } from '$lib/actions/longpress';
 
   export let task: Task;
 
@@ -19,10 +20,10 @@
 </script>
 
 <div class="bg-neutral-900 rounded-2xl p-6 space-y-3">
-  <h2 class="text-xl font-semibold leading-tight">{task.title}</h2>
+  <h2 class="text-xl font-semibold leading-tight" use:longpress>{task.title}</h2>
 
   {#if task.description}
-    <p class="text-neutral-400 text-sm leading-relaxed">{task.description}</p>
+    <p class="text-neutral-400 text-sm leading-relaxed" use:longpress>{task.description}</p>
   {/if}
 
   <div class="flex flex-wrap gap-2 pt-1">

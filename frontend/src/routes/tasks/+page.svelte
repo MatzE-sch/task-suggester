@@ -4,6 +4,7 @@
   import { loadCategories } from '$lib/stores/categories';
   import type { Task, TaskStatus, TaskType } from '$lib/types';
   import TaskForm from '$lib/components/TaskForm.svelte';
+  import { longpress } from '$lib/actions/longpress';
 
   let tasks: Task[] = [];
   let showForm = false;
@@ -171,7 +172,7 @@
       {#each ordered as { task, depth } (task.id)}
         <div class="bg-neutral-900 rounded-xl p-4 flex items-start justify-between gap-3" style="margin-left: {depth * 1.5}rem; {depth > 0 ? 'border-left: 2px solid #404040;' : ''}">
           <div class="flex-1 min-w-0">
-            <p class="font-medium truncate">{task.title}</p>
+            <p class="font-medium truncate" use:longpress>{task.title}</p>
             <div class="flex items-center gap-3 mt-1 flex-wrap">
               <span class="text-xs {STATUS_COLORS[task.status]}">{STATUS_LABELS[task.status]}</span>
               {#each task.categories as cat}
