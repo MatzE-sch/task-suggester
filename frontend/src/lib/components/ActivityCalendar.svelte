@@ -32,7 +32,7 @@
   })();
 
   function cellColor(count: number): string {
-    if (count === 0) return '#1a1a1a';
+    if (count === 0) return 'var(--calendar-empty)';
     if (count === 1) return '#312e81';
     if (count === 2) return '#4338ca';
     if (count <= 4) return '#6366f1';

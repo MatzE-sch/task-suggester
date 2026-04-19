@@ -7,3 +7,26 @@
     @apply antialiased select-none;
   }
 }
+
+/* Light theme overrides */
+.light .bg-neutral-950 { background-color: rgb(248 250 252); }
+.light .bg-neutral-900 { background-color: rgb(255 255 255); }
+.light .bg-neutral-800 { background-color: rgb(241 245 249); }
+.light .bg-neutral-700 { background-color: rgb(226 232 240); }
+.light .bg-neutral-950\/95 { background-color: rgb(248 250 252 / 0.95); }
+
+.light .text-white { color: rgb(15 23 42); }
+.light .text-neutral-300 { color: rgb(51 65 85); }
+.light .text-neutral-400 { color: rgb(100 116 139); }
+.light .text-neutral-500 { color: rgb(148 163 184); }
+.light .text-neutral-600 { color: rgb(148 163 184); }
+
+.light .border-neutral-800 { border-color: rgb(226 232 240); }
+
+.light .hover\:bg-neutral-900:hover { background-color: rgb(241 245 249); }
+.light .hover\:bg-neutral-800:hover { background-color: rgb(226 232 240); }
+.light .hover\:bg-neutral-700:hover { background-color: rgb(203 213 225); }
+.light .hover\:text-white:hover { color: rgb(15 23 42); }
+
+:root { --calendar-empty: #1a1a1a; }
+.light { --calendar-empty: #e2e8f0; }

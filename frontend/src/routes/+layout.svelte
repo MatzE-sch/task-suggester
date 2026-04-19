@@ -7,6 +7,8 @@
   import { user, isLoggedIn, initAuth } from '$lib/stores/auth';
   import { logout, createInvite } from '$lib/api';
   import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
+  import { theme, resolveTheme } from '$lib/stores/theme';
+  import type { Theme } from '$lib/stores/theme';
 
   let showInviteModal = false;
   let inviteLink = '';
@@ -25,6 +27,15 @@
     if ($page.url.pathname !== '/login' && !localStorage.getItem('token')) {
       goto('/login');
     }
+
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    function applyTheme() {
+      const resolved = resolveTheme($theme, mq);
+      document.documentElement.classList.toggle('light', resolved === 'light');
+    }
+    applyTheme();
+    const unsubTheme = theme.subscribe(() => applyTheme());
+    mq.addEventListener('change', applyTheme);
 
     function handleKeydown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
@@ -54,6 +65,8 @@
     document.addEventListener('keydown', handleKeydown);
     document.addEventListener('keyup', handleKeyup);
     return () => {
+      unsubTheme();
+      mq.removeEventListener('change', applyTheme);
       document.removeEventListener('keydown', handleKeydown);
       document.removeEventListener('keyup', handleKeyup);
     };
@@ -119,6 +132,15 @@
 
     <div class="border-t border-neutral-800 pt-4 space-y-1 text-sm">
       <p class="text-xs text-neutral-500 px-1 pb-1">{$user?.username}</p>
+      <div class="flex rounded-xl overflow-hidden mb-1">
+        {#each [['dark', '🌙'], ['light', '☀️'], ['auto', '💻']] as [t, icon]}
+          <button
+            onclick={() => theme.set(t as Theme)}
+            class="flex-1 py-1.5 text-xs transition-colors {$theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white hover:bg-neutral-900'}"
+            title={t === 'dark' ? 'Dunkel' : t === 'light' ? 'Hell' : 'System'}
+          >{icon}</button>
+        {/each}
+      </div>
       <button
         onclick={generateInvite}
         disabled={inviteLoading}
@@ -148,6 +170,14 @@
         role="menu"
       >
         <span class="px-4 py-2 text-xs text-neutral-500">{$user?.username}</span>
+        <div class="flex mx-3 mb-1 rounded-xl overflow-hidden border border-neutral-800">
+          {#each [['dark', '🌙'], ['light', '☀️'], ['auto', '💻']] as [t, icon]}
+            <button
+              onclick={() => { theme.set(t as Theme); }}
+              class="flex-1 py-1.5 text-xs transition-colors {$theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white hover:bg-neutral-800'}"
+            >{icon}</button>
+          {/each}
+        </div>
         <hr class="border-neutral-800 my-1" />
         <button onclick={generateInvite} disabled={inviteLoading} class="px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors text-left">
           + Einladen
