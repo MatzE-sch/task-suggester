@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { ActivityStats, Category } from '$lib/types';
 
   export let stats: ActivityStats;
   export let categories: Category[];
+
+  let scrollContainer: HTMLDivElement;
 
   const WEEKS = 26;
 
@@ -41,16 +44,14 @@
   }
 
   const DOW = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  onMount(() => {
+    if (scrollContainer) scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+  });
 </script>
 
 <div class="space-y-3">
-  <div class="flex gap-1 overflow-x-auto pb-2">
-    <!-- Day labels -->
-    <div class="flex flex-col gap-1 mr-1 shrink-0">
-      {#each DOW as d}
-        <div class="h-3 w-5 text-[9px] text-neutral-600 flex items-center">{d}</div>
-      {/each}
-    </div>
+  <div bind:this={scrollContainer} class="flex gap-1 overflow-x-auto pb-2">
     <!-- Weeks -->
     {#each weeks as week}
       <div class="flex flex-col gap-1 shrink-0">
@@ -67,6 +68,12 @@
         {/each}
       </div>
     {/each}
+    <!-- Day labels -->
+    <div class="flex flex-col gap-1 ml-1 shrink-0">
+      {#each DOW as d}
+        <div class="h-3 w-5 text-[9px] text-neutral-600 flex items-center">{d}</div>
+      {/each}
+    </div>
   </div>
 
   <!-- Legend -->

@@ -22,6 +22,7 @@
   let selectedStatus: TaskStatus = task.status ?? 'open';
   let selectedCats: number[] = task.categories?.map((c) => c.id) ?? [];
   let selectedDeps: number[] = task.dependency_ids ?? [];
+  let depsOpen = false;
 
   const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
     { value: 'open', label: 'Offen' },
@@ -107,15 +108,24 @@
 
   {#if allTasks.filter((t) => t.id !== task.id && t.status !== 'done').length > 0}
     <div>
-      <p class="text-xs text-neutral-500 mb-2">Erst erledigen (Abhängigkeiten)</p>
-      <div class="space-y-1 max-h-32 overflow-y-auto">
-        {#each allTasks.filter((t) => t.id !== task.id && t.status !== 'done') as t}
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={selectedDeps.includes(t.id)} onchange={() => toggleDep(t.id)} class="accent-indigo-500" />
-            <span class="text-sm text-neutral-300">{t.title}</span>
-          </label>
-        {/each}
-      </div>
+      <button
+        type="button"
+        onclick={() => (depsOpen = !depsOpen)}
+        class="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+      >
+        <span class="transition-transform" style="display:inline-block;transform:rotate({depsOpen ? 90 : 0}deg)">▶</span>
+        Erst erledigen (Abhängigkeiten){selectedDeps.length > 0 ? ` · ${selectedDeps.length} gewählt` : ''}
+      </button>
+      {#if depsOpen}
+        <div class="mt-2 space-y-1 max-h-32 overflow-y-auto">
+          {#each allTasks.filter((t) => t.id !== task.id && t.status !== 'done') as t}
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={selectedDeps.includes(t.id)} onchange={() => toggleDep(t.id)} class="accent-indigo-500" />
+              <span class="text-sm text-neutral-300">{t.title}</span>
+            </label>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 

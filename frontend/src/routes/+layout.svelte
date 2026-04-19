@@ -86,7 +86,7 @@
   <slot />
 {:else}
   <div class="min-h-screen flex flex-col">
-    <nav class="border-b border-neutral-800 px-4 py-3 flex items-center justify-between relative">
+    <nav class="sticky top-0 z-10 bg-neutral-950 border-b border-neutral-800 px-4 py-3 flex items-center justify-between relative">
       <!-- Left: logo + desktop nav links -->
       <div class="flex gap-4 items-center">
         <a href="/" class="font-semibold text-indigo-400 text-lg">
