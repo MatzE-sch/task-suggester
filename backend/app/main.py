@@ -20,7 +20,7 @@ DEFAULT_CATEGORIES = [
     ("sport",      "#3b82f6", "🏃"),
     ("orga",       "#0ea5e9", "📋"),
     ("papierkram", "#e5e7eb", "📄"),
-    ("chore",      "#6b7280", "🧹"),
+    ("chore",      "#9ca3af", "🧹"),
 ]
 
 REMOVE_CATEGORIES = ["fun"]

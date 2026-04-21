@@ -7,6 +7,7 @@
   import type { Task, SuggestMode, Category } from '$lib/types';
   import TaskCard from '$lib/components/TaskCard.svelte';
   import TaskForm from '$lib/components/TaskForm.svelte';
+  import { isLightColor } from '$lib/utils';
 
   let task: Task | null = null;
   let allTasks: Task[] = [];
@@ -135,7 +136,7 @@
       {#each $categories as cat}
         <button
           onclick={() => { toggleModeCat(cat); fetchSuggestion(); }}
-          class="text-xs px-2.5 py-1 rounded-full transition-all"
+          class="text-xs px-2.5 py-1 rounded-full transition-all {!selectedCategoryIds.includes(cat.id) && isLightColor(cat.color) ? 'cat-light-color' : ''}"
           style={selectedCategoryIds.includes(cat.id)
             ? `background-color: ${cat.color}; color: white`
             : `background-color: ${cat.color}22; color: ${cat.color}; border: 1px solid ${cat.color}44`}
@@ -247,19 +248,19 @@
         >▶ Arbeite daran</button>
         <button
           onclick={() => (showBlockForm = true)}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-red-400"
         >⛔ Erst das erledigen</button>
         <button
           onclick={() => { showSnoozeForm = true; snoozeDate = ''; }}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-amber-400"
         >⏳ Warte bis ...</button>
         <button
           onclick={() => doAction('skip')}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-sky-400"
         >⏭ Jetzt nicht</button>
         <button
           onclick={() => (showEditForm = true)}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-yellow-400"
         >✏ Bearbeiten</button>
       </div>
       <button
@@ -287,19 +288,19 @@
         >▶ Arbeite daran</button>
         <button
           onclick={() => (showBlockForm = true)}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-red-400"
         >⛔ Erst das erledigen</button>
         <button
           onclick={() => { showSnoozeForm = true; snoozeDate = ''; }}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-amber-400"
         >⏳ Warte bis ...</button>
         <button
           onclick={() => doAction('skip')}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-sky-400"
         >⏭ Jetzt nicht</button>
         <button
           onclick={() => (showEditForm = true)}
-          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          class="bg-neutral-800 hover:bg-neutral-700 rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2 text-yellow-400"
         >✏ Bearbeiten</button>
       </div>
     </div>

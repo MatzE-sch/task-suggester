@@ -3,6 +3,7 @@
   import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs } from '$lib/api';
   import { loadCategories } from '$lib/stores/categories';
   import type { Task, TaskStatus, TaskType } from '$lib/types';
+  import { isLightColor } from '$lib/utils';
   import TaskForm from '$lib/components/TaskForm.svelte';
   import { longpress } from '$lib/actions/longpress';
 
@@ -176,7 +177,7 @@
             <div class="flex items-center gap-3 mt-1 flex-wrap">
               <span class="text-xs {STATUS_COLORS[task.status]}">{STATUS_LABELS[task.status]}</span>
               {#each task.categories as cat}
-                <span class="text-xs px-1.5 py-0.5 rounded" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
+                <span class="text-xs px-1.5 py-0.5 rounded {isLightColor(cat.color) ? 'cat-light-color' : ''}" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
               {/each}
               {#if task.task_type === 'recurring' && task.recurrence_days}
                 {@const pct = recurringProgress(task)}

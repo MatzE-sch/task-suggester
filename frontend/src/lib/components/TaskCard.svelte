@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task } from '$lib/types';
   import { longpress } from '$lib/actions/longpress';
+  import { isLightColor } from '$lib/utils';
 
   export let task: Task;
 
@@ -29,7 +30,7 @@
   <div class="flex flex-wrap gap-2 pt-1">
     {#each task.categories as cat}
       <span
-        class="text-xs px-2.5 py-1 rounded-full font-medium"
+        class="text-xs px-2.5 py-1 rounded-full font-medium {isLightColor(cat.color) ? 'cat-light-color' : ''}"
         style="background-color: {cat.color}22; color: {cat.color}; border: 1px solid {cat.color}44"
       >
         {#if cat.icon}{cat.icon} {/if}{cat.name}

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { getActivityStats, getCategories, createCategory, updateCategory, deleteCategory } from '$lib/api';
   import type { ActivityStats, Category } from '$lib/types';
+  import { isLightColor } from '$lib/utils';
   import ActivityCalendar from '$lib/components/ActivityCalendar.svelte';
 
   let stats: ActivityStats = {};
@@ -146,7 +147,7 @@
       <div class="flex flex-wrap gap-2">
         {#each categories as cat}
           <span
-            class="text-xs px-2.5 py-1 rounded-full"
+            class="text-xs px-2.5 py-1 rounded-full {isLightColor(cat.color) ? 'cat-light-color' : ''}"
             style="background-color: {cat.color}22; color: {cat.color}; border: 1px solid {cat.color}44"
           >{#if cat.icon}{cat.icon} {/if}{cat.name}</span>
         {/each}
@@ -165,12 +166,12 @@
             class="bg-neutral-900 rounded-xl px-3 py-2.5 transition-opacity {dragOverId === cat.id && dragId !== cat.id ? 'opacity-40' : ''}"
           >
             {#if editingId === cat.id}
-              <div class="flex gap-2 items-center">
-                <input bind:value={editIcon} placeholder="Icon" class="w-12 bg-neutral-800 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center" />
-                <input bind:value={editName} class="flex-1 bg-neutral-800 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <div class="flex gap-2 items-center min-w-0">
+                <input bind:value={editIcon} placeholder="Icon" class="w-10 min-w-0 shrink-0 bg-neutral-800 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center" />
+                <input bind:value={editName} class="min-w-0 flex-1 bg-neutral-800 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <input bind:value={editColor} type="color" class="w-8 h-8 rounded cursor-pointer bg-neutral-800 border-0 p-0.5 shrink-0" />
-                <button onclick={() => saveEdit(cat.id)} class="text-green-400 hover:text-green-300 text-lg leading-none">✓</button>
-                <button onclick={() => (editingId = null)} class="text-neutral-500 hover:text-white text-lg leading-none">✕</button>
+                <button onclick={() => saveEdit(cat.id)} class="text-green-400 hover:text-green-300 text-lg leading-none shrink-0">✓</button>
+                <button onclick={() => (editingId = null)} class="text-neutral-500 hover:text-white text-lg leading-none shrink-0">✕</button>
               </div>
             {:else}
               <div class="flex items-center gap-2">

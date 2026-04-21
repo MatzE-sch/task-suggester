@@ -31,3 +31,5 @@
 
 :root { --calendar-empty: #1a1a1a; }
 .light { --calendar-empty: #e2e8f0; }
+
+.light .cat-light-color { color: #111827 !important; border-color: #9ca3af !important; }

@@ -80,7 +80,9 @@ def delete_task(task_id: int, db: Session = Depends(get_db), user: User = Depend
 
 @router.post("/{task_id}/action", response_model=TaskOut)
 def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    task = _get_own_task(task_id, user, db)
+    task = db.query(Task).options(joinedload(Task.categories)).filter(Task.id == task_id, Task.owner_id == user.id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
 
     status_map = {
         "start": TaskStatus.in_progress,
@@ -152,12 +154,14 @@ def activity_stats(db: Session = Depends(get_db), user: User = Depends(get_curre
     for log in logs:
         day = log.logged_date.isoformat()
         if day not in result:
-            result[day] = {"count": 0, "category_counts": Counter()}
+            result[day] = {"count": 0, "category_counts": {}}
         result[day]["count"] += 1
         cat_ids = list(log.category_ids or [])
         if not cat_ids and log.task:
             cat_ids = [c.id for c in log.task.categories]
-        result[day]["category_counts"].update(cat_ids)
+        weight = 1.0 / len(cat_ids) if cat_ids else 1.0
+        for cat_id in cat_ids:
+            result[day]["category_counts"][cat_id] = result[day]["category_counts"].get(cat_id, 0.0) + weight
     return {
         day: {
             "count": data["count"],
