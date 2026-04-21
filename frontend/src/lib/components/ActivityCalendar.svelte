@@ -36,11 +36,14 @@
     const MAX_TASKS = 8;
     const fillPct = Math.min(day.count / MAX_TASKS, 1) * 100;
     const half = (100 - fillPct) / 2;
+    const categorizedTotal = Object.values(day.categoryCounts).reduce((s, n) => s + n, 0);
+    const uncategorized = Math.max(0, day.count - Math.round(categorizedTotal));
     const entries = Object.entries(day.categoryCounts)
       .map(([id, cnt]) => { const cat = categories.find(c => Number(c.id) === Number(id)); return { color: cat?.color, sort_order: cat?.sort_order ?? 999, cnt }; })
       .filter((e): e is { color: string; sort_order: number; cnt: number } => !!e.color)
       .sort((a, b) => a.sort_order - b.sort_order);
-    const colors = entries.length === 0 ? [{ color: '#6366f1', cnt: 1 }] : entries;
+    if (uncategorized > 0) entries.push({ color: '#6366f1', sort_order: 9999, cnt: uncategorized });
+    const colors = entries.length === 0 ? [{ color: '#6366f1', cnt: day.count }] : entries;
     const total = colors.reduce((s, e) => s + e.cnt, 0);
     const stops: string[] = [`var(--calendar-empty) ${half.toFixed(1)}%`];
     let pos = 0;
@@ -57,8 +60,11 @@
     const names = day.categories
       .map(id => categories.find(c => Number(c.id) === Number(id))?.name)
       .filter(Boolean).join(', ');
+    const categorizedTotal = Object.values(day.categoryCounts).reduce((s, n) => s + n, 0);
+    const uncategorized = Math.max(0, day.count - Math.round(categorizedTotal));
     const base = `${formatDate(day.date)}: ${day.count} erledigt`;
-    return names ? `${base} (${names})` : base;
+    const parts = [names, uncategorized > 0 ? `${uncategorized} ohne Kategorie` : ''].filter(Boolean).join(', ');
+    return parts ? `${base} (${parts})` : base;
   }
 
   function formatDate(d: string): string {
