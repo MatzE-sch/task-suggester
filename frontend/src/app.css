@@ -3,9 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    overscroll-behavior: none;
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     @apply antialiased select-none;
     font-family: 'Inter', 'Noto Emoji', ui-sans-serif, system-ui, sans-serif;
+    overscroll-behavior: none;
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Mobile: flex column so main becomes the sole scroll container */
+@media (max-width: 767px) {
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
   }
 }
 

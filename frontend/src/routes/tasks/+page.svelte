@@ -12,6 +12,7 @@
   let editTask: Task | null = null;
   let filter: TaskStatus | 'all' | 'recurring' = 'all';
   let loading = false;
+  let search = '';
 
   const STATUS_LABELS: Record<TaskStatus, string> = {
     open: 'Offen',
@@ -64,7 +65,12 @@
   }
 
   async function markDone(id: number) {
-    await taskAction(id, 'done');
+    try {
+      await taskAction(id, 'done');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '';
+      if (!msg.includes('already completed')) alert(msg || 'Fehler');
+    }
     await load();
   }
 
@@ -75,11 +81,12 @@
     await load();
   }
 
-  $: filtered = filter === 'all'
+  $: filtered = (filter === 'all'
     ? tasks
     : filter === 'recurring'
       ? tasks.filter((t) => t.task_type === 'recurring')
-      : tasks.filter((t) => t.status === filter);
+      : tasks.filter((t) => t.status === filter)
+  ).filter((t) => !search || t.title.toLowerCase().includes(search.toLowerCase()));
 
   function recurringProgress(task: Task): number {
     if (!task.recurrence_days || !task.snoozed_until) return -1;
@@ -168,6 +175,14 @@
       {/each}
     </div>
 
+    <!-- Search -->
+    <input
+      bind:value={search}
+      type="search"
+      placeholder="Suchen..."
+      class="w-full bg-neutral-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    />
+
     <!-- Task list -->
     <div class="space-y-2">
       {#each ordered as { task, depth } (task.id)}
@@ -188,6 +203,9 @@
               {/if}
               {#if task.deadline}
                 <span class="text-xs text-neutral-500">📅 {new Date(task.deadline).toLocaleDateString('de-DE')}</span>
+              {/if}
+              {#if task.status === 'waiting' && task.snoozed_until}
+                <span class="text-xs text-yellow-500">⏳ {new Date(task.snoozed_until).toLocaleDateString('de-DE')}</span>
               {/if}
             </div>
           </div>

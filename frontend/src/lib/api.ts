@@ -80,6 +80,7 @@ export async function updateTask(id: number, data: Partial<{
   deadline: string | null;
   recurrence_days: number | null;
   status: string;
+  snoozed_until: string;
   category_ids: number[];
   dependency_ids: number[];
 }>): Promise<Task> {

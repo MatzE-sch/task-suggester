@@ -10,6 +10,7 @@ from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, TaskActionRequest
 from app.services.auth import get_current_user
+from app.services.suggest import auto_reset_tasks
 
 router = APIRouter()
 
@@ -31,6 +32,7 @@ def _apply_relations(task: Task, category_ids: list[int], dependency_ids: list[i
 
 @router.get("", response_model=list[TaskOut])
 def list_tasks(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    auto_reset_tasks(db, user.id)
     tasks = db.query(Task).filter(Task.owner_id == user.id).order_by(Task.created_at.desc()).all()
     return [TaskOut.from_orm_task(t) for t in tasks]
 
@@ -61,7 +63,7 @@ def get_task(task_id: int, db: Session = Depends(get_db), user: User = Depends(g
 @router.patch("/{task_id}", response_model=TaskOut)
 def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = _get_own_task(task_id, user, db)
-    for field in ("title", "description", "task_type", "deadline", "recurrence_days", "status"):
+    for field in ("title", "description", "task_type", "deadline", "recurrence_days", "status", "snoozed_until"):
         value = getattr(data, field)
         if value is not None:
             setattr(task, field, value)
@@ -105,7 +107,16 @@ def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get
 
     elif body.action in status_map:
         if body.action == "done" and task.task_type == "recurring" and task.recurrence_days:
-            task.status = TaskStatus.open
+            today = body.logged_date or date.today()
+            already_done = db.query(ActivityLog).filter(
+                ActivityLog.user_id == user.id,
+                ActivityLog.task_id == task.id,
+                ActivityLog.action == "done",
+                ActivityLog.logged_date == today,
+            ).first()
+            if already_done:
+                raise HTTPException(status_code=409, detail="Recurring task already completed today")
+            task.status = TaskStatus.done
             task.snoozed_until = datetime.now(timezone.utc) + timedelta(days=task.recurrence_days)
         else:
             task.status = status_map[body.action]

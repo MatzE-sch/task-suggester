@@ -21,6 +21,7 @@ class TaskUpdate(BaseModel):
     deadline: datetime | None = None
     recurrence_days: int | None = None
     status: TaskStatus | None = None
+    snoozed_until: datetime | None = None
     category_ids: list[int] | None = None
     dependency_ids: list[int] | None = None
 

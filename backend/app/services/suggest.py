@@ -34,8 +34,30 @@ def _recurring_weight(task: Task, now: datetime) -> float:
     return min(1.0 + (progress - 1.0) * 3.0, MAX_RECURRENCE_WEIGHT)
 
 
+def auto_reset_tasks(db: Session, user_id: int) -> None:
+    now = datetime.now(timezone.utc)
+    candidates = db.query(Task).filter(
+        Task.owner_id == user_id,
+        Task.status.in_([TaskStatus.done, TaskStatus.waiting]),
+        Task.snoozed_until.isnot(None),
+    ).all()
+    changed = False
+    for t in candidates:
+        su = t.snoozed_until.replace(tzinfo=timezone.utc) if t.snoozed_until.tzinfo is None else t.snoozed_until
+        if su <= now:
+            if t.status == TaskStatus.done and t.task_type == 'recurring':
+                t.status = TaskStatus.open
+                changed = True
+            elif t.status == TaskStatus.waiting:
+                t.status = TaskStatus.open
+                changed = True
+    if changed:
+        db.commit()
+
+
 def _eligible_tasks(db: Session, user_id: int) -> list[Task]:
     now = datetime.now(timezone.utc)
+    auto_reset_tasks(db, user_id)
     tasks = (
         db.query(Task)
         .filter(
@@ -94,9 +116,20 @@ def suggest_by_category(db: Session, user_id: int, category_ids: list[int]) -> T
     return random.choices(eligible, weights=_skip_weights(eligible, now), k=1)[0]
 
 
+def suggest_recurring(db: Session, user_id: int) -> Task | None:
+    now = datetime.now(timezone.utc)
+    eligible = [t for t in _eligible_tasks(db, user_id) if t.task_type == 'recurring']
+    if not eligible:
+        return None
+    weights = [_recurring_weight(t, now) for t in eligible]
+    return random.choices(eligible, weights=weights, k=1)[0]
+
+
 def get_suggestion(db: Session, user_id: int, mode: str, category_ids: list[int]) -> Task | None:
     if mode == "deadline":
         return suggest_deadline(db, user_id)
     if mode == "category":
         return suggest_by_category(db, user_id, category_ids)
+    if mode == "recurring":
+        return suggest_recurring(db, user_id)
     return suggest_random(db, user_id)

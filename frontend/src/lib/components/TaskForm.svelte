@@ -11,6 +11,7 @@
     deadline?: string;
     recurrence_days?: number | null;
     status?: TaskStatus;
+    snoozed_until?: string;
     category_ids: number[];
     dependency_ids: number[];
   }) => void;
@@ -24,6 +25,7 @@
   let taskType: TaskType = task.task_type ?? 'normal';
   let deadline = task.deadline ? task.deadline.slice(0, 10) : '';
   let selectedStatus: TaskStatus = task.status ?? 'open';
+  let waitingUntil: string = (task.status === 'waiting' && task.snoozed_until) ? task.snoozed_until.slice(0, 10) : '';
   let selectedCats: number[] = task.categories?.map((c) => c.id) ?? [];
   let selectedDeps: number[] = task.dependency_ids ?? [];
   let depsOpen = false;
@@ -91,6 +93,7 @@
       deadline: taskType === 'deadline' ? (deadline || undefined) : undefined,
       recurrence_days: taskType === 'recurring' ? recurrenceDays : null,
       ...(isEdit ? { status: selectedStatus } : {}),
+      ...(isEdit && selectedStatus === 'waiting' && waitingUntil ? { snoozed_until: waitingUntil + 'T00:00:00Z' } : {}),
       category_ids: selectedCats,
       dependency_ids: selectedDeps,
     });
@@ -161,6 +164,14 @@
         {/each}
       </select>
     </div>
+    {#if selectedStatus === 'waiting'}
+      <input
+        bind:value={waitingUntil}
+        type="date"
+        placeholder="Warte bis (optional)"
+        class="w-full bg-neutral-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    {/if}
   {/if}
 
   {#if $categories.length > 0}
