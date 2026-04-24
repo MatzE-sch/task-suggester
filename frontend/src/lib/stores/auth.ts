@@ -12,7 +12,9 @@ export function initAuth() {
   import('../api').then(({ getMe }) =>
     getMe()
       .then((u) => user.set(u))
-      .catch(() => {
+      .catch((e) => {
+        // TypeError = Netzwerkfehler → Token behalten, nächstes Mal online neu validieren
+        if (e instanceof TypeError) return;
         localStorage.removeItem('token');
         user.set(null);
       })

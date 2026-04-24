@@ -1,8 +1,19 @@
 import { browser } from '$app/environment';
 import { PUBLIC_API_URL } from '$env/static/public';
-import type { Task, Category, User, ActivityStats, SuggestMode } from './types';
+import type { Task, Category, User, ActivityStats, SuggestMode, TaskType } from './types';
+import {
+  cacheTasks, getCachedTasks,
+  cacheCategories, getCachedCategories,
+  cacheActivityStats, getCachedActivityStats,
+  cacheUser, getCachedUser,
+} from './cache';
+import { queueMutation } from './stores/offline';
 
 const BASE = PUBLIC_API_URL;
+
+function offline(): boolean {
+  return browser && !navigator.onLine;
+}
 
 function getToken(): string | null {
   if (!browser) return null;
@@ -49,7 +60,24 @@ export async function register(username: string, password: string, inviteCode: s
 }
 
 export async function getMe(): Promise<User> {
-  return request<User>('/auth/me');
+  if (offline()) {
+    const cached = getCachedUser();
+    if (cached) return cached;
+    throw new Error('Offline');
+  }
+  try {
+    const u = await request<User>('/auth/me');
+    cacheUser(u);
+    return u;
+  } catch (e) {
+    // TypeError = fetch konnte Server nicht erreichen (kein/schlechtes Netz)
+    // In dem Fall gecachten User zurückgeben statt ausloggen
+    if (e instanceof TypeError) {
+      const cached = getCachedUser();
+      if (cached) return cached;
+    }
+    throw e;
+  }
 }
 
 export function logout() {
@@ -58,7 +86,15 @@ export function logout() {
 
 // Tasks
 export async function getTasks(): Promise<Task[]> {
-  return request<Task[]>('/tasks');
+  try {
+    const tasks = await request<Task[]>('/tasks');
+    cacheTasks(tasks);
+    return tasks;
+  } catch (e) {
+    const cached = getCachedTasks();
+    if (cached) return cached;
+    throw e;
+  }
 }
 
 export async function createTask(data: {
@@ -70,7 +106,31 @@ export async function createTask(data: {
   category_ids?: number[];
   dependency_ids?: number[];
 }): Promise<Task> {
-  return request<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
+  if (offline()) {
+    const now = new Date().toISOString();
+    const tempTask: Task = {
+      id: -Date.now(),
+      title: data.title,
+      description: data.description ?? null,
+      task_type: (data.task_type as TaskType) ?? 'normal',
+      status: 'open',
+      deadline: data.deadline ?? null,
+      recurrence_days: data.recurrence_days ?? null,
+      snoozed_until: null,
+      skip_count: 0,
+      owner_id: 0,
+      created_at: now,
+      updated_at: now,
+      categories: [],
+      dependency_ids: data.dependency_ids ?? [],
+    };
+    cacheTasks([...(getCachedTasks() ?? []), tempTask]);
+    queueMutation('POST', '/tasks', JSON.stringify(data));
+    return tempTask;
+  }
+  const task = await request<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
+  cacheTasks([...(getCachedTasks() ?? []), task]);
+  return task;
 }
 
 export async function updateTask(id: number, data: Partial<{
@@ -84,11 +144,29 @@ export async function updateTask(id: number, data: Partial<{
   category_ids: number[];
   dependency_ids: number[];
 }>): Promise<Task> {
-  return request<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  if (offline()) {
+    const cached = getCachedTasks() ?? [];
+    const existing = cached.find((t) => t.id === id);
+    if (!existing) throw new Error('Task nicht gefunden');
+    const updated = { ...existing, ...data, updated_at: new Date().toISOString() } as Task;
+    cacheTasks(cached.map((t) => (t.id === id ? updated : t)));
+    queueMutation('PATCH', `/tasks/${id}`, JSON.stringify(data));
+    return updated;
+  }
+  const task = await request<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  const cached = getCachedTasks() ?? [];
+  cacheTasks(cached.map((t) => (t.id === task.id ? task : t)));
+  return task;
 }
 
 export async function deleteTask(id: number): Promise<void> {
-  return request<void>(`/tasks/${id}`, { method: 'DELETE' });
+  if (offline()) {
+    cacheTasks((getCachedTasks() ?? []).filter((t) => t.id !== id));
+    queueMutation('DELETE', `/tasks/${id}`, null);
+    return;
+  }
+  await request<void>(`/tasks/${id}`, { method: 'DELETE' });
+  cacheTasks((getCachedTasks() ?? []).filter((t) => t.id !== id));
 }
 
 export async function taskAction(id: number, action: string, newTask?: {
@@ -99,18 +177,57 @@ export async function taskAction(id: number, action: string, newTask?: {
 }, snoozedUntil?: string): Promise<Task> {
   const d = new Date();
   const logged_date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return request<Task>(`/tasks/${id}/action`, {
-    method: 'POST',
-    body: JSON.stringify({ action, new_task: newTask, snoozed_until: snoozedUntil, logged_date }),
-  });
+  const body = JSON.stringify({ action, new_task: newTask, snoozed_until: snoozedUntil, logged_date });
+
+  if (offline()) {
+    const cached = getCachedTasks() ?? [];
+    const existing = cached.find((t) => t.id === id);
+    if (!existing) throw new Error('Task nicht gefunden');
+    const statusMap: Record<string, Task['status']> = {
+      done: 'done', start: 'in_progress', waiting: 'waiting', block: 'waiting', skip: 'open',
+    };
+    const updated: Task = {
+      ...existing,
+      status: statusMap[action] ?? existing.status,
+      snoozed_until: action === 'waiting' ? (snoozedUntil ?? null) : existing.snoozed_until,
+      skip_count: action === 'skip' ? existing.skip_count + 1 : existing.skip_count,
+      updated_at: new Date().toISOString(),
+    };
+    cacheTasks(cached.map((t) => (t.id === id ? updated : t)));
+    queueMutation('POST', `/tasks/${id}/action`, body);
+    return updated;
+  }
+
+  const task = await request<Task>(`/tasks/${id}/action`, { method: 'POST', body });
+  const cached = getCachedTasks() ?? [];
+  cacheTasks(cached.map((t) => (t.id === task.id ? task : t)));
+  return task;
 }
 
 export async function getActivityStats(): Promise<ActivityStats> {
-  return request<ActivityStats>('/tasks/stats/activity');
+  try {
+    const stats = await request<ActivityStats>('/tasks/stats/activity');
+    cacheActivityStats(stats);
+    return stats;
+  } catch (e) {
+    const cached = getCachedActivityStats();
+    if (cached) return cached;
+    throw e;
+  }
 }
 
 // Suggest
 export async function getSuggestion(mode: SuggestMode, categoryIds: number[] = []): Promise<Task> {
+  if (offline()) {
+    const cached = getCachedTasks() ?? [];
+    const eligible = cached.filter((t) => {
+      if (t.status !== 'open' && t.status !== 'in_progress') return false;
+      if (categoryIds.length > 0 && !t.categories.some((c) => categoryIds.includes(c.id))) return false;
+      return true;
+    });
+    if (eligible.length === 0) throw new Error('Keine passenden Aufgaben offline verfügbar');
+    return eligible[Math.floor(Math.random() * eligible.length)];
+  }
   return request<Task>('/suggest', {
     method: 'POST',
     body: JSON.stringify({ mode, category_ids: categoryIds }),
@@ -119,7 +236,15 @@ export async function getSuggestion(mode: SuggestMode, categoryIds: number[] = [
 
 // Categories
 export async function getCategories(): Promise<Category[]> {
-  return request<Category[]>('/categories');
+  try {
+    const cats = await request<Category[]>('/categories');
+    cacheCategories(cats);
+    return cats;
+  } catch (e) {
+    const cached = getCachedCategories();
+    if (cached) return cached;
+    throw e;
+  }
 }
 
 export async function createCategory(data: { name: string; color: string; icon?: string }): Promise<Category> {

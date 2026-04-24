@@ -1,5 +1,12 @@
 dinge die ich noch hinzufügen möchte:
 
+
+## Fragen
+### Titel
+
+?Tasks
+YATS Task Suggester
+
 ## neue featuers
 - onboarding, 
 	- add 3 tasks
@@ -7,6 +14,9 @@ dinge die ich noch hinzufügen möchte:
 - native app
 	- block other apps (categories)
 	- suggest tasks when trying to open them
+- personal motivation pet
+- paid features
+	- invited = discount 
 
 ## änderungen
 - eigene bestätigungs popup wenn delete

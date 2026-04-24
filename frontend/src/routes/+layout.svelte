@@ -9,6 +9,8 @@
   import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
   import { theme, resolveTheme } from '$lib/stores/theme';
   import type { Theme } from '$lib/stores/theme';
+  import { isOnline, pendingMutations, replayMutations } from '$lib/stores/offline';
+  import { loadCategories } from '$lib/stores/categories';
 
   let showInviteModal = false;
   let inviteLink = '';
@@ -27,6 +29,12 @@
     if ($page.url.pathname !== '/login' && !localStorage.getItem('token')) {
       goto('/login');
     }
+
+    async function handleOnline() {
+      await replayMutations();
+      loadCategories().catch(() => {});
+    }
+    window.addEventListener('online', handleOnline);
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     function applyTheme() {
@@ -69,6 +77,7 @@
       mq.removeEventListener('change', applyTheme);
       document.removeEventListener('keydown', handleKeydown);
       document.removeEventListener('keyup', handleKeyup);
+      window.removeEventListener('online', handleOnline);
     };
   });
 
@@ -99,6 +108,12 @@
     navigator.clipboard.writeText(inviteLink);
   }
 </script>
+
+{#if !$isOnline}
+  <div class="fixed bottom-16 md:bottom-4 left-1/2 -translate-x-1/2 z-50 bg-amber-700 text-amber-50 text-xs rounded-full py-1.5 px-4 shadow-lg whitespace-nowrap pointer-events-none">
+    Offline{#if $pendingMutations.length > 0} · {$pendingMutations.length} ausstehend{/if}
+  </div>
+{/if}
 
 {#if $page.url.pathname === '/login'}
   <slot />
