@@ -11,6 +11,7 @@
   import type { Theme } from '$lib/stores/theme';
   import { isOnline, pendingMutations, replayMutations } from '$lib/stores/offline';
   import { loadCategories } from '$lib/stores/categories';
+  import { clearAllCaches } from '$lib/cache';
 
   let showInviteModal = false;
   let inviteLink = '';
@@ -196,6 +197,9 @@
         <hr class="border-neutral-800 my-1" />
         <button onclick={generateInvite} disabled={inviteLoading} class="px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors text-left">
           + Einladen
+        </button>
+        <button onclick={() => { clearAllCaches(); showMobileMenu = false; location.reload(); }} class="px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors text-left">
+          ↺ Aktualisieren
         </button>
         <button onclick={handleLogout} class="px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-neutral-800 transition-colors text-left">
           Logout
