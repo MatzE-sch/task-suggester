@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs } from '$lib/api';
   import { loadCategories } from '$lib/stores/categories';
   import type { Task, TaskStatus, TaskType } from '$lib/types';
@@ -30,13 +30,57 @@
     skipped: 'text-neutral-500',
   };
 
-  onMount(async () => {
-    await loadCategories();
-    await load();
+  const SCROLL_KEY = 'tasks-scroll';
+
+  function getMain(): HTMLElement | null {
+    return document.querySelector('main');
+  }
+
+  function saveScroll() {
+    const el = getMain();
+    if (el) sessionStorage.setItem(SCROLL_KEY, String(el.scrollTop));
+  }
+
+  async function restoreScroll() {
+    await tick();
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) {
+      const el = getMain();
+      if (el) el.scrollTop = parseInt(saved);
+    }
+  }
+
+  onMount(() => {
+    loadCategories().then(() => load()).then(() => restoreScroll());
+
+    const el = getMain();
+    el?.addEventListener('scroll', saveScroll, { passive: true });
+    return () => el?.removeEventListener('scroll', saveScroll);
   });
 
   async function load() {
     tasks = await getTasks();
+  }
+
+  function openNewForm() {
+    showForm = true;
+    editTask = null;
+    getMain()?.scrollTo({ top: 0 });
+  }
+
+  function openEditTask(task: Task) {
+    editTask = task;
+    getMain()?.scrollTo({ top: 0 });
+  }
+
+  function cancelNew() {
+    showForm = false;
+    restoreScroll();
+  }
+
+  function cancelEdit() {
+    editTask = null;
+    restoreScroll();
   }
 
   async function handleCreate(data: Parameters<typeof createTask>[0]) {
@@ -45,6 +89,7 @@
       await createTask(data);
       showForm = false;
       await load();
+      await restoreScroll();
     } finally { loading = false; }
   }
 
@@ -55,6 +100,7 @@
       await updateTask(editTask.id, data);
       editTask = null;
       await load();
+      await restoreScroll();
     } finally { loading = false; }
   }
 
@@ -77,7 +123,6 @@
   async function reopen(id: number) {
     const { updateTask } = await import('$lib/api');
     await updateTask(id, {});
-    // Reset via patch with status isn't in schema — re-fetch
     await load();
   }
 
@@ -135,7 +180,7 @@
   <div class="py-6 space-y-4">
     <div class="flex items-center gap-3">
       <button
-        onclick={() => { showForm = false; editTask = null; }}
+        onclick={() => { if (editTask) cancelEdit(); else cancelNew(); }}
         class="text-neutral-400 hover:text-white transition-colors text-lg leading-none"
         title="Zurück"
       >←</button>
@@ -143,9 +188,9 @@
     </div>
     <div class="bg-neutral-900 rounded-2xl p-5">
       {#if editTask}
-        <TaskForm task={editTask} allTasks={tasks} onSubmit={handleEdit} onCancel={() => (editTask = null)} />
+        <TaskForm task={editTask} allTasks={tasks} onSubmit={handleEdit} onCancel={cancelEdit} />
       {:else}
-        <TaskForm onSubmit={handleCreate} onCancel={() => (showForm = false)} allTasks={tasks} />
+        <TaskForm onSubmit={handleCreate} onCancel={cancelNew} allTasks={tasks} />
       {/if}
     </div>
   </div>
@@ -159,7 +204,7 @@
           class="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors text-neutral-400"
         >📅 ICS</button>
         <button
-          onclick={() => { showForm = true; editTask = null; }}
+          onclick={openNewForm}
           class="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors font-medium"
         >+ Neu</button>
       </div>
@@ -213,7 +258,7 @@
             {#if task.status !== 'done'}
               <button onclick={() => markDone(task.id)} class="text-base text-neutral-500 hover:text-green-400 transition-colors font-bold" title="Als erledigt markieren">✓</button>
             {/if}
-            <button onclick={() => (editTask = task)} class="text-base text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
+            <button onclick={() => openEditTask(task)} class="text-base text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
             <button onclick={() => handleDelete(task.id)} class="text-base text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
           </div>
         </div>
