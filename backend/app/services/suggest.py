@@ -20,11 +20,12 @@ def _is_eligible_snooze(task: Task, now: datetime) -> bool:
 
 
 def _recurring_weight(task: Task, now: datetime) -> float:
-    if task.task_type != 'recurring' or not task.recurrence_days or task.snoozed_until is None:
+    if task.task_type != 'recurring' or not task.recurrence_days:
         return 1.0
-    su = task.snoozed_until.replace(tzinfo=timezone.utc) if task.snoozed_until.tzinfo is None else task.snoozed_until
-    last_done = su - timedelta(days=task.recurrence_days)
-    elapsed = (now - last_done).total_seconds() / 86400
+    if task.last_completed_at is None:
+        return 0.05
+    lc = task.last_completed_at.replace(tzinfo=timezone.utc) if task.last_completed_at.tzinfo is None else task.last_completed_at
+    elapsed = (now - lc).total_seconds() / 86400
     progress = elapsed / task.recurrence_days
 
     if progress < 0.7:

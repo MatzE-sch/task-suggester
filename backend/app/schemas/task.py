@@ -35,6 +35,7 @@ class TaskOut(BaseModel):
     deadline: datetime | None
     recurrence_days: int | None
     snoozed_until: datetime | None
+    last_completed_at: datetime | None
     skip_count: int
     owner_id: int
     created_at: datetime
@@ -60,8 +61,26 @@ class TaskOut(BaseModel):
             categories=task.categories,
             dependency_ids=[d.id for d in task.dependencies],
             snoozed_until=task.snoozed_until,
+            last_completed_at=task.last_completed_at,
             skip_count=task.skip_count,
         )
+
+
+class ActivityLogOut(BaseModel):
+    id: int
+    task_id: int | None
+    task_title: str | None
+    task_type: str | None
+    category_ids: list[int]
+    logged_date: date
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ActivityLogUpdate(BaseModel):
+    category_ids: list[int] | None = None
+    logged_date: date | None = None
 
 
 class TaskActionRequest(BaseModel):

@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { PUBLIC_API_URL } from '$env/static/public';
-import type { Task, Category, User, ActivityStats, SuggestMode, TaskType } from './types';
+import type { Task, Category, User, ActivityStats, SuggestMode, TaskType, ActivityLogEntry } from './types';
 import {
   cacheTasks, getCachedTasks,
   cacheCategories, getCachedCategories,
@@ -214,6 +214,19 @@ export async function getActivityStats(): Promise<ActivityStats> {
     if (cached) return cached;
     throw e;
   }
+}
+
+// Task Log
+export async function getTaskLog(): Promise<ActivityLogEntry[]> {
+  return request<ActivityLogEntry[]>('/tasks/log');
+}
+
+export async function deleteTaskLog(id: number): Promise<void> {
+  return request<void>(`/tasks/log/${id}`, { method: 'DELETE' });
+}
+
+export async function updateTaskLog(id: number, data: { category_ids?: number[]; logged_date?: string }): Promise<ActivityLogEntry> {
+  return request<ActivityLogEntry>(`/tasks/log/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 // Suggest

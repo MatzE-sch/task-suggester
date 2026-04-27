@@ -20,6 +20,7 @@ export interface Task {
   deadline: string | null;
   recurrence_days: number | null;
   snoozed_until: string | null;
+  last_completed_at: string | null;
   skip_count: number;
   owner_id: number;
   created_at: string;
@@ -41,3 +42,13 @@ export interface ActivityDay {
 }
 
 export type ActivityStats = Record<string, ActivityDay>;
+
+export interface ActivityLogEntry {
+  id: number;
+  task_id: number | null;
+  task_title: string | null;
+  task_type: string | null;
+  category_ids: number[];
+  logged_date: string;
+  created_at: string;
+}
