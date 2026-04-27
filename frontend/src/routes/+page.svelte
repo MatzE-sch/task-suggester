@@ -4,6 +4,7 @@
   import { getSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
   import { loadCategories, categories } from '$lib/stores/categories';
   import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
+  import { getCachedTasks } from '$lib/cache';
   import type { Task, SuggestMode, Category } from '$lib/types';
   import TaskCard from '$lib/components/TaskCard.svelte';
   import TaskForm from '$lib/components/TaskForm.svelte';
@@ -25,30 +26,35 @@
   onMount(async () => {
     if (get(newTaskSignal) > 0) {
       showNewTaskForm = true;
+      allTasks = getCachedTasks() ?? [];
       newTaskSignal.set(0);
     }
-    await loadCategories();
-    await fetchTasks();
-    await fetchSuggestion();
+    // Kategorien und Vorschlag parallel laden (unabhängig voneinander)
+    await Promise.all([loadCategories(), fetchSuggestion()]);
+    // Tasks im Hintergrund für Task-Formular
+    fetchTasks();
   });
 
   async function fetchTasks() {
     try { allTasks = await getTasks(); } catch {}
   }
 
-  async function fetchSuggestion() {
+  async function _applySuggestion() {
     error = '';
     noTasks = false;
-    loading = true;
     try {
       task = await getSuggestion(mode, selectedCategoryIds);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
       if (msg.includes('No eligible')) { noTasks = true; task = null; }
       else { error = msg || 'Fehler beim Laden'; }
-    } finally {
-      loading = false;
     }
+  }
+
+  async function fetchSuggestion() {
+    loading = true;
+    try { await _applySuggestion(); }
+    finally { loading = false; }
   }
 
   async function doAction(action: string, snoozedUntil?: string) {
@@ -57,8 +63,7 @@
     showSnoozeForm = false;
     try {
       await taskAction(task.id, action, undefined, snoozedUntil ? new Date(snoozedUntil).toISOString() : undefined);
-      await fetchTasks();
-      await fetchSuggestion();
+      await Promise.all([fetchTasks(), _applySuggestion()]);
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';
     } finally {
@@ -77,8 +82,7 @@
     showBlockForm = false;
     try {
       await taskAction(task.id, 'block', data);
-      await fetchTasks();
-      await fetchSuggestion();
+      await Promise.all([fetchTasks(), _applySuggestion()]);
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';
     } finally {

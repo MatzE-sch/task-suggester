@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs } from '$lib/api';
+  import { getCachedTasks } from '$lib/cache';
   import { loadCategories } from '$lib/stores/categories';
   import type { Task, TaskStatus, TaskType } from '$lib/types';
   import { isLightColor } from '$lib/utils';
@@ -51,7 +52,11 @@
   }
 
   onMount(() => {
-    loadCategories().then(() => load()).then(() => restoreScroll());
+    // Gecachte Tasks sofort anzeigen, dann parallel frisch laden
+    const cached = getCachedTasks();
+    if (cached) tasks = cached;
+
+    Promise.all([loadCategories(), load()]).then(() => restoreScroll());
 
     const el = getMain();
     el?.addEventListener('scroll', saveScroll, { passive: true });
