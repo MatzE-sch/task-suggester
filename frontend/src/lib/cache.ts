@@ -33,7 +33,9 @@ export const getCachedActivityStats = (): ActivityStats | null => load<ActivityS
 export const cacheUser = (user: User) => save(KEYS.user, user);
 export const getCachedUser = (): User | null => load<User>(KEYS.user);
 
-export function clearAllCaches(): void {
+export function clearDataCaches(): void {
   if (!browser) return;
-  Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+  localStorage.removeItem(KEYS.tasks);
+  localStorage.removeItem(KEYS.categories);
+  localStorage.removeItem(KEYS.activityStats);
 }
