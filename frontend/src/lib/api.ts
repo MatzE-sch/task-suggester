@@ -117,6 +117,7 @@ export async function createTask(data: {
       deadline: data.deadline ?? null,
       recurrence_days: data.recurrence_days ?? null,
       snoozed_until: null,
+      last_completed_at: null,
       skip_count: 0,
       owner_id: 0,
       created_at: now,
@@ -229,22 +230,43 @@ export async function updateTaskLog(id: number, data: { category_ids?: number[];
   return request<ActivityLogEntry>(`/tasks/log/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
-// Suggest
-export async function getSuggestion(mode: SuggestMode, categoryIds: number[] = []): Promise<Task> {
-  if (offline()) {
-    const cached = getCachedTasks() ?? [];
-    const eligible = cached.filter((t) => {
-      if (t.status !== 'open' && t.status !== 'in_progress') return false;
-      if (categoryIds.length > 0 && !t.categories.some((c) => categoryIds.includes(c.id))) return false;
-      return true;
-    });
-    if (eligible.length === 0) throw new Error('Keine passenden Aufgaben offline verfügbar');
-    return eligible[Math.floor(Math.random() * eligible.length)];
-  }
-  return request<Task>('/suggest', {
-    method: 'POST',
-    body: JSON.stringify({ mode, category_ids: categoryIds }),
+// Suggest — vollständig client-side, kein Server-Request nötig
+function recurringPct(t: Task): number {
+  if (!t.recurrence_days) return -1;
+  if (t.last_completed_at)
+    return (Date.now() - new Date(t.last_completed_at).getTime()) / (t.recurrence_days * 86400000) * 100;
+  if (!t.snoozed_until) return -1;
+  const due = new Date(t.snoozed_until).getTime();
+  return (Date.now() - (due - t.recurrence_days * 86400000)) / (t.recurrence_days * 86400000) * 100;
+}
+
+function pickSuggestion(tasks: Task[], mode: SuggestMode, categoryIds: number[]): Task {
+  const now = Date.now();
+  const doneIds = new Set(tasks.filter((t) => t.status === 'done' || t.status === 'skipped').map((t) => t.id));
+  let eligible = tasks.filter((t) => {
+    if (t.status !== 'open' && t.status !== 'in_progress') return false;
+    if (t.snoozed_until && new Date(t.snoozed_until).getTime() > now) return false;
+    if (t.dependency_ids.some((id) => !doneIds.has(id))) return false;
+    return true;
   });
+  if (mode === 'category' && categoryIds.length > 0)
+    eligible = eligible.filter((t) => t.categories.some((c) => categoryIds.includes(c.id)));
+  if (eligible.length === 0) throw new Error('No eligible tasks');
+  if (mode === 'deadline') {
+    const withDl = eligible
+      .filter((t) => t.deadline)
+      .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime());
+    return withDl[0] ?? eligible[Math.floor(Math.random() * eligible.length)];
+  }
+  if (mode === 'recurring') {
+    const rec = eligible.filter((t) => t.task_type === 'recurring');
+    if (rec.length > 0) return rec.sort((a, b) => recurringPct(b) - recurringPct(a))[0];
+  }
+  return eligible[Math.floor(Math.random() * eligible.length)];
+}
+
+export function getSuggestion(mode: SuggestMode, categoryIds: number[] = []): Task {
+  return pickSuggestion(getCachedTasks() ?? [], mode, categoryIds);
 }
 
 // Categories
@@ -287,14 +309,25 @@ export async function getInvites(): Promise<InviteCode[]> {
   return request<InviteCode[]>('/invites');
 }
 
-// ICS Export
-export async function downloadIcs(): Promise<void> {
-  const token = getToken();
-  const res = await fetch(`${BASE}/export/ics`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error('Export fehlgeschlagen');
-  const blob = await res.blob();
+// ICS Export — client-side aus gecachten Tasks
+export function downloadIcs(): void {
+  const tasks = getCachedTasks() ?? [];
+  const statusMap: Record<string, string> = {
+    open: 'NEEDS-ACTION', in_progress: 'IN-PROCESS',
+    waiting: 'NEEDS-ACTION', done: 'COMPLETED', skipped: 'CANCELLED',
+  };
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Task Suggester//DE'];
+  for (const t of tasks) {
+    lines.push('BEGIN:VTODO');
+    lines.push(`UID:${t.id}@task-suggester`);
+    lines.push(`SUMMARY:${t.title.replace(/\n/g, '\\n')}`);
+    if (t.description) lines.push(`DESCRIPTION:${t.description.replace(/\n/g, '\\n')}`);
+    if (t.deadline) lines.push(`DUE;VALUE=DATE:${t.deadline.slice(0, 10).replace(/-/g, '')}`);
+    lines.push(`STATUS:${statusMap[t.status] ?? 'NEEDS-ACTION'}`);
+    lines.push('END:VTODO');
+  }
+  lines.push('END:VCALENDAR');
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

@@ -26,35 +26,33 @@
   onMount(async () => {
     if (get(newTaskSignal) > 0) {
       showNewTaskForm = true;
-      allTasks = getCachedTasks() ?? [];
       newTaskSignal.set(0);
     }
-    // Kategorien und Vorschlag parallel laden (unabhängig voneinander)
-    await Promise.all([loadCategories(), fetchSuggestion()]);
-    // Tasks im Hintergrund für Task-Formular
-    fetchTasks();
+    // Sofort aus Cache anzeigen
+    allTasks = getCachedTasks() ?? [];
+    if (allTasks.length) fetchSuggestion();
+    // Frisch laden, dann Vorschlag neu berechnen
+    await Promise.all([loadCategories(), fetchTasks()]);
+    fetchSuggestion();
   });
 
   async function fetchTasks() {
     try { allTasks = await getTasks(); } catch {}
   }
 
-  async function _applySuggestion() {
+  function fetchSuggestion() {
+    loading = true;
     error = '';
     noTasks = false;
     try {
-      task = await getSuggestion(mode, selectedCategoryIds);
+      task = getSuggestion(mode, selectedCategoryIds);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
       if (msg.includes('No eligible')) { noTasks = true; task = null; }
       else { error = msg || 'Fehler beim Laden'; }
+    } finally {
+      loading = false;
     }
-  }
-
-  async function fetchSuggestion() {
-    loading = true;
-    try { await _applySuggestion(); }
-    finally { loading = false; }
   }
 
   async function doAction(action: string, snoozedUntil?: string) {
@@ -63,7 +61,8 @@
     showSnoozeForm = false;
     try {
       await taskAction(task.id, action, undefined, snoozedUntil ? new Date(snoozedUntil).toISOString() : undefined);
-      await Promise.all([fetchTasks(), _applySuggestion()]);
+      await fetchTasks();
+      fetchSuggestion();
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';
     } finally {
@@ -82,7 +81,8 @@
     showBlockForm = false;
     try {
       await taskAction(task.id, 'block', data);
-      await Promise.all([fetchTasks(), _applySuggestion()]);
+      await fetchTasks();
+      fetchSuggestion();
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';
     } finally {

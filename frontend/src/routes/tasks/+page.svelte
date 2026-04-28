@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs, getTaskLog, deleteTaskLog, updateTaskLog } from '$lib/api';
+  import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs, getTaskLog, deleteTaskLog } from '$lib/api';
   import { getCachedTasks, cacheActivityStats } from '$lib/cache';
   import { loadCategories } from '$lib/stores/categories';
   import { categories } from '$lib/stores/categories';
@@ -16,12 +16,16 @@
   let loading = false;
   let search = '';
 
+  const FILTER_KEY = 'tasks-filter';
+
+  function setFilter(f: typeof filter) {
+    filter = f;
+    sessionStorage.setItem(FILTER_KEY, f);
+  }
+
   // Task Log state
   let logEntries: ActivityLogEntry[] = [];
   let logLoading = false;
-  let editLogId: number | null = null;
-  let editLogCategoryIds: number[] = [];
-  let editLogDate = '';
 
   const STATUS_LABELS: Record<TaskStatus, string> = {
     open: 'Offen',
@@ -60,6 +64,9 @@
   }
 
   onMount(() => {
+    const savedFilter = sessionStorage.getItem(FILTER_KEY) as typeof filter;
+    if (savedFilter) filter = savedFilter;
+
     const cached = getCachedTasks();
     if (cached) tasks = cached;
 
@@ -110,41 +117,6 @@
     await deleteTaskLog(id);
     logEntries = logEntries.filter((e) => e.id !== id);
     cacheActivityStats({} as never);
-  }
-
-  function startEditLog(entry: ActivityLogEntry) {
-    editLogId = entry.id;
-    editLogCategoryIds = [...entry.category_ids];
-    editLogDate = entry.logged_date;
-  }
-
-  function cancelEditLog() {
-    editLogId = null;
-  }
-
-  async function saveEditLog(id: number) {
-    const updated = await updateTaskLog(id, {
-      category_ids: editLogCategoryIds,
-      logged_date: editLogDate,
-    });
-    logEntries = logEntries.map((e) => {
-      if (e.id !== id) return e;
-      return { ...e, category_ids: updated.category_ids, logged_date: updated.logged_date };
-    });
-    // Re-sort if date changed
-    logEntries = [...logEntries].sort((a, b) =>
-      b.logged_date.localeCompare(a.logged_date) || b.created_at.localeCompare(a.created_at)
-    );
-    editLogId = null;
-    cacheActivityStats({} as never);
-  }
-
-  function toggleLogCategory(id: number) {
-    if (editLogCategoryIds.includes(id)) {
-      editLogCategoryIds = editLogCategoryIds.filter((c) => c !== id);
-    } else {
-      editLogCategoryIds = [...editLogCategoryIds, id];
-    }
   }
 
   function openNewForm() {
@@ -306,7 +278,7 @@
     <div class="flex gap-2 flex-wrap">
       {#each [['all', 'Alle'], ['open', 'Offen'], ['in_progress', 'In Arbeit'], ['waiting', 'Wartend'], ['done', 'Erledigt'], ['recurring', '🔁 Wiederkehrend']] as [f, label]}
         <button
-          onclick={() => (filter = f as typeof filter)}
+          onclick={() => setFilter(f as typeof filter)}
           class="text-xs px-3 py-1.5 rounded-full transition-colors {filter === f ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'}"
         >{label}</button>
       {/each}
@@ -376,55 +348,34 @@
               </div>
               <div class="space-y-1.5">
                 {#each group.entries as entry (entry.id)}
-                  {#if editLogId === entry.id}
-                    <!-- Inline edit -->
-                    <div class="bg-neutral-900 rounded-xl p-3 space-y-2">
-                      <div class="flex flex-wrap gap-1.5">
-                        {#each $categories as cat}
-                          <button
-                            onclick={() => toggleLogCategory(cat.id)}
-                            class="text-xs px-2 py-0.5 rounded transition-all {editLogCategoryIds.includes(cat.id) ? '' : 'opacity-30'} {isLightColor(cat.color) ? 'cat-light-color' : ''}"
-                            style="background-color: {cat.color}22; color: {cat.color}; border: 1px solid {editLogCategoryIds.includes(cat.id) ? cat.color : 'transparent'}"
-                          >{cat.name}</button>
-                        {/each}
-                      </div>
-                      <input
-                        bind:value={editLogDate}
-                        type="date"
-                        class="bg-neutral-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
-                      />
-                      <div class="flex gap-2">
-                        <button onclick={() => saveEditLog(entry.id)} class="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors">Speichern</button>
-                        <button onclick={cancelEditLog} class="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors">Abbrechen</button>
-                      </div>
+                  {@const entryTask = entry.task_id ? tasks.find((t) => t.id === entry.task_id) : null}
+                  <div class="bg-neutral-900 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                      {#if entry.task_title}
+                        <span class="text-sm font-medium truncate block">
+                          {#if entry.task_type === 'recurring'}<span class="text-neutral-500 mr-1">🔁</span>{/if}{entry.task_title}
+                        </span>
+                      {:else}
+                        <span class="text-sm text-neutral-600 italic">gelöscht</span>
+                      {/if}
+                      {#if entry.category_ids.length > 0}
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          {#each entry.category_ids as catId}
+                            {@const cat = $categories.find(c => c.id === catId)}
+                            {#if cat}
+                              <span class="text-xs px-1.5 py-0.5 rounded {isLightColor(cat.color) ? 'cat-light-color' : ''}" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
+                            {/if}
+                          {/each}
+                        </div>
+                      {/if}
                     </div>
-                  {:else}
-                    <div class="bg-neutral-900 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
-                      <div class="flex-1 min-w-0">
-                        {#if entry.task_title}
-                          <span class="text-sm font-medium truncate block">
-                            {#if entry.task_type === 'recurring'}<span class="text-neutral-500 mr-1">🔁</span>{/if}{entry.task_title}
-                          </span>
-                        {:else}
-                          <span class="text-sm text-neutral-600 italic">gelöscht</span>
-                        {/if}
-                        {#if entry.category_ids.length > 0}
-                          <div class="flex flex-wrap gap-1 mt-1">
-                            {#each entry.category_ids as catId}
-                              {@const cat = $categories.find(c => c.id === catId)}
-                              {#if cat}
-                                <span class="text-xs px-1.5 py-0.5 rounded {isLightColor(cat.color) ? 'cat-light-color' : ''}" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
-                              {/if}
-                            {/each}
-                          </div>
-                        {/if}
-                      </div>
-                      <div class="flex gap-2 shrink-0">
-                        <button onclick={() => startEditLog(entry)} class="text-sm text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
-                        <button onclick={() => handleDeleteLog(entry.id)} class="text-sm text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
-                      </div>
+                    <div class="flex gap-2 shrink-0">
+                      {#if entryTask}
+                        <button onclick={() => openEditTask(entryTask)} class="text-sm text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
+                      {/if}
+                      <button onclick={() => handleDeleteLog(entry.id)} class="text-sm text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
                     </div>
-                  {/if}
+                  </div>
                 {/each}
               </div>
             </div>
