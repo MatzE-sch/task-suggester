@@ -247,7 +247,7 @@
         .sort((a, b) => recurringProgress(b) - recurringProgress(a))
         .map((task) => ({ task, depth: 0 }));
     } else {
-      const taskMap = new Map(tasks.map((t) => [t.id, t]));
+      const taskMap = new Map(filtered.map((t) => [t.id, t]));
       const depOfFiltered = new Set(filtered.flatMap((t) => t.dependency_ids));
       ordered = [];
       const placed = new Set<number>();
