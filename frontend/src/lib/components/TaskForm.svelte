@@ -100,7 +100,7 @@
   }
 </script>
 
-<div class="space-y-4" onkeydown={(e) => e.ctrlKey && e.key === 'Enter' && submit()}>
+<div class="space-y-4" onkeydown={(e) => { if (e.ctrlKey && e.key === 'Enter') submit(); else if (e.key === 'Escape') onCancel?.(); }}>
   <input
     bind:value={title}
     type="text"

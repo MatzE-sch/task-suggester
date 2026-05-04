@@ -210,7 +210,7 @@
   </header>
 
   <!-- Content -->
-  <main class="md:ml-52 p-4 max-w-2xl mx-auto md:mx-0 w-full flex-1 overflow-y-auto md:flex-none md:h-screen pb-6 md:pb-8">
+  <main class="md:ml-52 p-4 max-w-2xl mx-auto md:mx-0 w-full flex-1 min-h-0 overflow-y-auto md:flex-none md:h-screen pb-6 md:pb-8">
     <slot />
   </main>
 
@@ -232,6 +232,13 @@
         <span class="text-xs">{item.label}</span>
       </a>
     {/each}
+    <button
+      onclick={() => { newTaskSignal.update(n => n + 1); goto('/'); }}
+      class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors text-neutral-500 hover:text-indigo-400"
+    >
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/></svg>
+      <span class="text-xs">Neu</span>
+    </button>
   </nav>
 
 {/if}
