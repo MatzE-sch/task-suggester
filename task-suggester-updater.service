@@ -1,0 +1,16 @@
+[Unit]
+Description=Task Suggester auto-updater
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/docker/task-suggester
+ExecStart=/root/docker/task-suggester/auto-update.sh
+Restart=on-failure
+RestartSec=10
+Environment=INTERVAL=300
+Environment=PUBLIC_API_URL=https://task-suggester.schu.gg/api
+
+[Install]
+WantedBy=multi-user.target
