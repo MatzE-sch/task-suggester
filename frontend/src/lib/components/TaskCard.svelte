@@ -18,6 +18,26 @@
     if (days < 7) return 'text-yellow-400';
     return 'text-neutral-400';
   }
+
+  function recurringProgress(t: Task): number {
+    if (!t.recurrence_days) return -1;
+    if (t.status === 'waiting' && t.last_completed_at && t.snoozed_until) {
+      return (new Date(t.snoozed_until).getTime() - new Date(t.last_completed_at).getTime()) / (t.recurrence_days * 86400000) * 100;
+    }
+    if (t.last_completed_at) {
+      return (Date.now() - new Date(t.last_completed_at).getTime()) / (t.recurrence_days * 86400000) * 100;
+    }
+    if (!t.snoozed_until) return -1;
+    const due = new Date(t.snoozed_until).getTime();
+    return (Date.now() - (due - t.recurrence_days * 86400000)) / (t.recurrence_days * 86400000) * 100;
+  }
+
+  function progressColor(pct: number): string {
+    if (pct < 70) return 'text-green-500';
+    if (pct < 100) return 'text-yellow-400';
+    if (pct < 150) return 'text-orange-400';
+    return 'text-red-400';
+  }
 </script>
 
 <div class="bg-neutral-900 rounded-2xl p-6 space-y-3">
@@ -40,8 +60,10 @@
 
   {#if task.task_type === 'recurring' && task.recurrence_days}
     {@const d = task.recurrence_days}
+    {@const pct = recurringProgress(task)}
     <p class="text-sm text-neutral-500">
       🔁 alle {d % 30 === 0 ? `${d / 30} Monat${d / 30 !== 1 ? 'e' : ''}` : d % 7 === 0 ? `${d / 7} Woche${d / 7 !== 1 ? 'n' : ''}` : `${d} Tag${d !== 1 ? 'e' : ''}`}
+      {#if pct >= 0}<span class="font-medium {progressColor(pct)}">{Math.round(pct)}%</span>{/if}
     </p>
   {/if}
 

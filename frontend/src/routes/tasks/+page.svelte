@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs, getTaskLog, deleteTaskLog } from '$lib/api';
+  import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs, getTaskLog, deleteTaskLog, updateTaskLog } from '$lib/api';
   import { getCachedTasks, cacheActivityStats } from '$lib/cache';
   import { loadCategories } from '$lib/stores/categories';
   import { categories } from '$lib/stores/categories';
@@ -28,6 +28,34 @@
   let logEntries: ActivityLogEntry[] = [];
   let logLoading = false;
   let pendingDeleteLogId: number | null = null;
+  let editLogId: number | null = null;
+  let editLogDate = '';
+  let datePickerInput: HTMLInputElement;
+
+  function startEditLog(entry: ActivityLogEntry) {
+    editLogId = entry.id;
+    editLogDate = entry.logged_date;
+    tick().then(() => datePickerInput?.showPicker());
+  }
+
+  async function saveEditLog() {
+    if (!editLogId || !editLogDate) return;
+    const id = editLogId;
+    const date = editLogDate;
+    editLogId = null;
+    editLogDate = '';
+    await updateTaskLog(id, { logged_date: date });
+    logEntries = logEntries.map((e) => (e.id === id ? { ...e, logged_date: date } : e));
+  }
+
+  async function handleUndoLog(entry: ActivityLogEntry) {
+    if (entry.task_id) {
+      await updateTask(entry.task_id, { status: 'open' });
+    }
+    await deleteTaskLog(entry.id);
+    logEntries = logEntries.filter((e) => e.id !== entry.id);
+    await load();
+  }
 
   const STATUS_LABELS: Record<TaskStatus, string> = {
     open: 'Offen',
@@ -281,7 +309,7 @@
 
     <!-- Status filter -->
     <div class="flex gap-2 flex-wrap">
-      {#each [['all', 'Alle'], ['open', 'Offen'], ['in_progress', 'In Arbeit'], ['waiting', 'Wartend'], ['done', 'Erledigt'], ['recurring', '🔁 Wiederkehrend']] as [f, label]}
+      {#each [['open', 'Offen'], ['recurring', '🔁 Wiederkehrend'], ['in_progress', 'In Arbeit'], ['waiting', 'Wartend'], ['all', 'Alle'], ['done', 'Erledigt']] as [f, label]}
         <button
           onclick={() => setFilter(f as typeof filter)}
           class="text-xs px-3 py-1.5 rounded-full transition-colors {filter === f ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'}"
@@ -354,6 +382,7 @@
       {:else if logByDate.length === 0}
         <p class="text-neutral-600 text-sm text-center py-8">Keine erledigten Einträge.</p>
       {:else}
+        <input type="date" bind:this={datePickerInput} bind:value={editLogDate} onchange={saveEditLog} class="sr-only" />
         <div class="space-y-4">
           {#each logByDate as group}
             <div>
@@ -362,7 +391,6 @@
               </div>
               <div class="space-y-1.5">
                 {#each group.entries as entry (entry.id)}
-                  {@const entryTask = entry.task_id ? tasks.find((t) => t.id === entry.task_id) : null}
                   <div class="bg-neutral-900 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
                     <div class="flex-1 min-w-0">
                       {#if entry.task_title}
@@ -384,9 +412,10 @@
                       {/if}
                     </div>
                     <div class="flex gap-2 shrink-0 items-center">
-                      {#if entryTask}
-                        <button onclick={() => openEditTask(entryTask)} class="text-sm text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
+                      {#if entry.task_id}
+                        <button onclick={() => handleUndoLog(entry)} class="text-sm text-neutral-500 hover:text-blue-400 transition-colors" title="Als nicht erledigt markieren">↺</button>
                       {/if}
+                      <button onclick={() => startEditLog(entry)} class="text-sm text-neutral-500 hover:text-yellow-400 transition-colors" title="Datum ändern">📅</button>
                       {#if pendingDeleteLogId === entry.id}
                         <button onclick={() => confirmDeleteLog(entry.id)} class="text-xs px-2 py-0.5 bg-red-700 hover:bg-red-600 text-white rounded-lg transition-colors">Löschen</button>
                         <button onclick={() => (pendingDeleteLogId = null)} class="text-xs px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition-colors">Abbruch</button>
