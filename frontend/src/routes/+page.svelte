@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { getSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
+  import { pickSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
   import { loadCategories, categories } from '$lib/stores/categories';
   import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
   import { getCachedTasks } from '$lib/cache';
@@ -45,7 +45,7 @@
     error = '';
     noTasks = false;
     try {
-      task = getSuggestion(mode, selectedCategoryIds);
+      task = pickSuggestion(allTasks, mode, selectedCategoryIds);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
       if (msg.includes('No eligible')) { noTasks = true; task = null; }
@@ -57,16 +57,33 @@
 
   async function doAction(action: string, snoozedUntil?: string) {
     if (!task) return;
-    loading = true;
+    const doneTask = task;
     showSnoozeForm = false;
+
+    // Lokaler State-Update sofort: Task aus eligible-Pool entfernen
+    if (action === 'done' || action === 'skip') {
+      allTasks = allTasks.map((t) =>
+        t.id === doneTask.id ? { ...t, status: action === 'done' ? 'done' : 'skipped' } : t
+      );
+    } else if (action === 'waiting' && snoozedUntil) {
+      const until = new Date(snoozedUntil).toISOString();
+      allTasks = allTasks.map((t) =>
+        t.id === doneTask.id ? { ...t, status: 'waiting', snoozed_until: until } : t
+      );
+    } else if (action === 'start') {
+      allTasks = allTasks.map((t) =>
+        t.id === doneTask.id ? { ...t, status: 'in_progress' } : t
+      );
+    }
+    fetchSuggestion();
+
+    // Server-Sync im Hintergrund
     try {
-      await taskAction(task.id, action, undefined, snoozedUntil ? new Date(snoozedUntil).toISOString() : undefined);
-      await fetchTasks();
+      await taskAction(doneTask.id, action, undefined, snoozedUntil ? new Date(snoozedUntil).toISOString() : undefined);
+      allTasks = await getTasks();
       fetchSuggestion();
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';
-    } finally {
-      loading = false;
     }
   }
 
@@ -77,16 +94,13 @@
 
   async function doBlock(data: Parameters<typeof createTask>[0]) {
     if (!task) return;
-    loading = true;
     showBlockForm = false;
     try {
       await taskAction(task.id, 'block', data);
-      await fetchTasks();
+      allTasks = await getTasks();
       fetchSuggestion();
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';
-    } finally {
-      loading = false;
     }
   }
 

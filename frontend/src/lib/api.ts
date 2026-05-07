@@ -240,7 +240,7 @@ function recurringPct(t: Task): number {
   return (Date.now() - (due - t.recurrence_days * 86400000)) / (t.recurrence_days * 86400000) * 100;
 }
 
-function pickSuggestion(tasks: Task[], mode: SuggestMode, categoryIds: number[]): Task {
+export function pickSuggestion(tasks: Task[], mode: SuggestMode, categoryIds: number[]): Task {
   const now = Date.now();
   const doneIds = new Set(tasks.filter((t) => t.status === 'done' || t.status === 'skipped').map((t) => t.id));
   let eligible = tasks.filter((t) => {
