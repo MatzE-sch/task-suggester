@@ -27,6 +27,7 @@
   // Task Log state
   let logEntries: ActivityLogEntry[] = [];
   let logLoading = false;
+  let pendingDeleteLogId: number | null = null;
 
   const STATUS_LABELS: Record<TaskStatus, string> = {
     open: 'Offen',
@@ -113,11 +114,11 @@
     });
   }
 
-  async function handleDeleteLog(id: number) {
-    if (!confirm('Eintrag wirklich löschen?')) return;
+  async function confirmDeleteLog(id: number) {
     await deleteTaskLog(id);
     logEntries = logEntries.filter((e) => e.id !== id);
     cacheActivityStats({} as never);
+    pendingDeleteLogId = null;
   }
 
   function openNewForm() {
@@ -382,11 +383,16 @@
                         </div>
                       {/if}
                     </div>
-                    <div class="flex gap-2 shrink-0">
+                    <div class="flex gap-2 shrink-0 items-center">
                       {#if entryTask}
                         <button onclick={() => openEditTask(entryTask)} class="text-sm text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
                       {/if}
-                      <button onclick={() => handleDeleteLog(entry.id)} class="text-sm text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
+                      {#if pendingDeleteLogId === entry.id}
+                        <button onclick={() => confirmDeleteLog(entry.id)} class="text-xs px-2 py-0.5 bg-red-700 hover:bg-red-600 text-white rounded-lg transition-colors">Löschen</button>
+                        <button onclick={() => (pendingDeleteLogId = null)} class="text-xs px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition-colors">Abbruch</button>
+                      {:else}
+                        <button onclick={() => (pendingDeleteLogId = entry.id)} class="text-sm text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
+                      {/if}
                     </div>
                   </div>
                 {/each}
