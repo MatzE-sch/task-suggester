@@ -12,6 +12,7 @@
     recurrence_days?: number | null;
     status?: TaskStatus;
     snoozed_until?: string;
+    priority: number;
     category_ids: number[];
     dependency_ids: number[];
   }) => void;
@@ -27,6 +28,7 @@
   let selectedStatus: TaskStatus = task.status ?? 'open';
   let waitingUntil: string = (task.status === 'waiting' && task.snoozed_until) ? task.snoozed_until.slice(0, 10) : '';
   let selectedCats: number[] = task.categories?.map((c) => c.id) ?? [];
+  let priority: number = task.priority ?? 3;
   let selectedDeps: number[] = task.dependency_ids ?? [];
   let depsOpen = false;
 
@@ -94,6 +96,7 @@
       recurrence_days: taskType === 'recurring' ? recurrenceDays : null,
       ...(isEdit ? { status: selectedStatus } : {}),
       ...(isEdit && selectedStatus === 'waiting' && waitingUntil ? { snoozed_until: waitingUntil + 'T00:00:00Z' } : {}),
+      priority,
       category_ids: selectedCats,
       dependency_ids: selectedDeps,
     });
@@ -173,6 +176,25 @@
       />
     {/if}
   {/if}
+
+  <!-- Priorität -->
+  <div>
+    <div class="flex items-center justify-between mb-1">
+      <p class="text-xs text-neutral-500">Priorität</p>
+      <span class="text-xs font-medium {priority >= 4 ? 'text-red-400' : priority >= 3 ? 'text-yellow-400' : 'text-neutral-400'}">{['', 'Niedrig', 'Gering', 'Normal', 'Hoch', 'Kritisch'][priority]}</span>
+    </div>
+    <input
+      bind:value={priority}
+      type="range"
+      min="1"
+      max="5"
+      step="1"
+      class="w-full accent-indigo-500 h-1.5"
+    />
+    <div class="flex justify-between text-xs text-neutral-600 mt-0.5 px-0.5">
+      <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+    </div>
+  </div>
 
   {#if $categories.length > 0}
     <div>

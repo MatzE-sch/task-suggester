@@ -46,6 +46,7 @@ class Task(Base):
     deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     recurrence_days: Mapped[int | None] = mapped_column(nullable=True)
     snoozed_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    priority: Mapped[int] = mapped_column(default=3, nullable=False)
     skip_count: Mapped[int] = mapped_column(default=0, nullable=False)
     last_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

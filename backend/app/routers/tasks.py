@@ -45,6 +45,7 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db), user: User = De
         task_type=data.task_type,
         deadline=data.deadline,
         recurrence_days=data.recurrence_days,
+        priority=data.priority,
         owner_id=user.id,
     )
     db.add(task)
@@ -149,7 +150,7 @@ def get_task(task_id: int, db: Session = Depends(get_db), user: User = Depends(g
 @router.patch("/{task_id}", response_model=TaskOut)
 def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = _get_own_task(task_id, user, db)
-    for field in ("title", "description", "task_type", "deadline", "recurrence_days", "status", "snoozed_until"):
+    for field in ("title", "description", "task_type", "deadline", "recurrence_days", "status", "snoozed_until", "priority"):
         value = getattr(data, field)
         if value is not None:
             setattr(task, field, value)

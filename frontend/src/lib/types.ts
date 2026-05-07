@@ -22,6 +22,7 @@ export interface Task {
   snoozed_until: string | null;
   last_completed_at: string | null;
   skip_count: number;
+  priority: number;
   owner_id: number;
   created_at: string;
   updated_at: string;

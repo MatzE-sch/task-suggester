@@ -103,6 +103,7 @@ export async function createTask(data: {
   task_type?: string;
   deadline?: string;
   recurrence_days?: number | null;
+  priority?: number;
   category_ids?: number[];
   dependency_ids?: number[];
 }): Promise<Task> {
@@ -119,6 +120,7 @@ export async function createTask(data: {
       snoozed_until: null,
       last_completed_at: null,
       skip_count: 0,
+      priority: data.priority ?? 3,
       owner_id: 0,
       created_at: now,
       updated_at: now,
@@ -142,6 +144,7 @@ export async function updateTask(id: number, data: Partial<{
   recurrence_days: number | null;
   status: string;
   snoozed_until: string;
+  priority: number;
   category_ids: number[];
   dependency_ids: number[];
 }>): Promise<Task> {

@@ -10,6 +10,7 @@ class TaskCreate(BaseModel):
     task_type: str = "normal"
     deadline: datetime | None = None
     recurrence_days: int | None = None
+    priority: int = 3
     category_ids: list[int] = []
     dependency_ids: list[int] = []
 
@@ -22,6 +23,7 @@ class TaskUpdate(BaseModel):
     recurrence_days: int | None = None
     status: TaskStatus | None = None
     snoozed_until: datetime | None = None
+    priority: int | None = None
     category_ids: list[int] | None = None
     dependency_ids: list[int] | None = None
 
@@ -37,6 +39,7 @@ class TaskOut(BaseModel):
     snoozed_until: datetime | None
     last_completed_at: datetime | None
     skip_count: int
+    priority: int
     owner_id: int
     created_at: datetime
     updated_at: datetime
@@ -55,6 +58,7 @@ class TaskOut(BaseModel):
             status=task.status,
             deadline=task.deadline,
             recurrence_days=task.recurrence_days,
+            priority=task.priority,
             owner_id=task.owner_id,
             created_at=task.created_at,
             updated_at=task.updated_at,

@@ -15,6 +15,7 @@
   let filter: TaskStatus | 'all' | 'recurring' = 'all';
   let loading = false;
   let search = '';
+  let sortByPriority = false;
 
   const FILTER_KEY = 'tasks-filter';
 
@@ -219,8 +220,11 @@
         .sort((a, b) => recurringProgress(b) - recurringProgress(a))
         .map((task) => ({ task, depth: 0 }));
     } else {
+      const source = sortByPriority
+        ? filtered.slice().sort((a, b) => b.priority - a.priority)
+        : filtered;
       const taskMap = new Map(tasks.map((t) => [t.id, t]));
-      const depOfFiltered = new Set(filtered.flatMap((t) => t.dependency_ids));
+      const depOfFiltered = new Set(source.flatMap((t) => t.dependency_ids));
       ordered = [];
       const placed = new Set<number>();
       function place(id: number, depth: number, ancestors: Set<number>) {
@@ -233,9 +237,9 @@
         next.add(id);
         for (const depId of t.dependency_ids) place(depId, depth + 1, next);
       }
-      const topLevel = filtered.filter((t) => !depOfFiltered.has(t.id));
+      const topLevel = source.filter((t) => !depOfFiltered.has(t.id));
       for (const task of topLevel) place(task.id, 0, new Set());
-      for (const task of filtered) place(task.id, 0, new Set());
+      for (const task of source) place(task.id, 0, new Set());
     }
   }
 </script>
@@ -282,6 +286,12 @@
           class="text-xs px-3 py-1.5 rounded-full transition-colors {filter === f ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'}"
         >{label}</button>
       {/each}
+      {#if filter !== 'done'}
+        <button
+          onclick={() => (sortByPriority = !sortByPriority)}
+          class="text-xs px-3 py-1.5 rounded-full transition-colors {sortByPriority ? 'bg-indigo-700 text-white' : 'text-neutral-500 hover:text-white'}"
+        >↑ Priorität</button>
+      {/if}
     </div>
 
     {#if filter !== 'done'}
@@ -301,6 +311,9 @@
               <p class="font-medium truncate" use:longpress>{task.title}</p>
               <div class="flex items-center gap-3 mt-1 flex-wrap">
                 <span class="text-xs {STATUS_COLORS[task.status]}">{STATUS_LABELS[task.status]}</span>
+                {#if task.priority && task.priority !== 3}
+                  <span class="text-xs {task.priority >= 4 ? 'text-red-400' : 'text-neutral-500'}">{task.priority >= 4 ? '▲'.repeat(task.priority - 3) : '▼'.repeat(3 - task.priority)} P{task.priority}</span>
+                {/if}
                 {#each task.categories as cat}
                   <span class="text-xs px-1.5 py-0.5 rounded {isLightColor(cat.color) ? 'cat-light-color' : ''}" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
                 {/each}
