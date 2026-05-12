@@ -37,21 +37,35 @@ def _recurring_weight(task: Task, now: datetime) -> float:
 
 def auto_reset_tasks(db: Session, user_id: int) -> None:
     now = datetime.now(timezone.utc)
-    candidates = db.query(Task).filter(
-        Task.owner_id == user_id,
-        Task.status.in_([TaskStatus.done, TaskStatus.waiting]),
-        Task.snoozed_until.isnot(None),
-    ).all()
+    today = now.date()
     changed = False
-    for t in candidates:
+
+    # Reset waiting tasks whose snooze has expired
+    for t in db.query(Task).filter(
+        Task.owner_id == user_id,
+        Task.status == TaskStatus.waiting,
+        Task.snoozed_until.isnot(None),
+    ).all():
         su = t.snoozed_until.replace(tzinfo=timezone.utc) if t.snoozed_until.tzinfo is None else t.snoozed_until
         if su <= now:
-            if t.status == TaskStatus.done and t.task_type == 'recurring':
+            t.status = TaskStatus.open
+            changed = True
+
+    # Reset recurring done tasks that haven't been completed today
+    for t in db.query(Task).filter(
+        Task.owner_id == user_id,
+        Task.status == TaskStatus.done,
+        Task.task_type == 'recurring',
+    ).all():
+        if t.last_completed_at is None:
+            t.status = TaskStatus.open
+            changed = True
+        else:
+            lc = t.last_completed_at.replace(tzinfo=timezone.utc) if t.last_completed_at.tzinfo is None else t.last_completed_at
+            if lc.date() < today:
                 t.status = TaskStatus.open
                 changed = True
-            elif t.status == TaskStatus.waiting:
-                t.status = TaskStatus.open
-                changed = True
+
     if changed:
         db.commit()
 
