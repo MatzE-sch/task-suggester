@@ -12,10 +12,10 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 check_and_update() {
     cd "$SCRIPT_DIR"
 
-    git fetch origin 2>>"$LOG_FILE"
+    git fetch github deploy 2>>"$LOG_FILE"
 
     LOCAL=$(git rev-parse HEAD)
-    REMOTE=$(git rev-parse "@{u}")
+    REMOTE=$(git rev-parse "github/deploy")
 
     if [ "$LOCAL" = "$REMOTE" ]; then
         log "Up to date ($LOCAL)."
@@ -32,7 +32,7 @@ check_and_update() {
         || { log "Backup FAILED, aborting update."; return 1; }
 
     log "Pulling and rebuilding..."
-    git pull --ff-only
+    git pull --ff-only github deploy
 
     PUBLIC_BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     PUBLIC_API_URL="$PUBLIC_API_URL" PUBLIC_BUILD_TIME="$PUBLIC_BUILD_TIME" docker compose -f compose.yml build

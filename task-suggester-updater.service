@@ -9,7 +9,7 @@ WorkingDirectory=/root/docker/task-suggester
 ExecStart=/root/docker/task-suggester/auto-update.sh
 Restart=on-failure
 RestartSec=10
-Environment=INTERVAL=300
+Environment=INTERVAL=30
 Environment=PUBLIC_API_URL=https://task-suggester.schu.gg/api
 
 [Install]
