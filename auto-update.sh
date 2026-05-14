@@ -21,7 +21,16 @@ check_and_update() {
         return
     fi
 
-    log "New commits detected ($LOCAL -> $REMOTE), pulling and rebuilding..."
+    log "New commits detected ($LOCAL -> $REMOTE), backing up database..."
+    BACKUP_FILE="$SCRIPT_DIR/backups/task-suggester_$(date +%Y%m%d_%H%M%S).sql.gz"
+    mkdir -p "$SCRIPT_DIR/backups"
+    set -a && source .env && set +a
+    docker compose -f compose.yml exec -T db pg_dump --clean --if-exists -U "$POSTGRES_USER" "$POSTGRES_DB" \
+        | gzip > "$BACKUP_FILE" \
+        && log "Backup saved: $BACKUP_FILE" \
+        || { log "Backup FAILED, aborting update."; return 1; }
+
+    log "Pulling and rebuilding..."
     git pull --ff-only
 
     PUBLIC_API_URL="$PUBLIC_API_URL" docker compose -f compose.yml build
