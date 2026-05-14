@@ -240,7 +240,7 @@
       </a>
     {/each}
     <button
-      onclick={() => { newTaskSignal.update(n => n + 1); goto('/'); }}
+      onclick={() => { newTaskSignal.update(n => n + 1); if ($page.url.pathname !== '/') goto('/'); }}
       class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors text-neutral-500 hover:text-indigo-400"
     >
       <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/></svg>
