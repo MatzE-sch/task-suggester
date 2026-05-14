@@ -196,7 +196,7 @@
         <div class="flex mx-3 mb-1 rounded-xl overflow-hidden border border-neutral-800">
           {#each [['dark', '🌙'], ['light', '☀'], ['auto', 'auto']] as [t, icon]}
             <button
-              onclick={() => { theme.set(t as Theme); }}
+              onclick={() => { theme.set(t as Theme); showMobileMenu = false; }}
               class="flex-1 py-1.5 text-xs transition-colors {$theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white hover:bg-neutral-800'}"
             >{icon}</button>
           {/each}
