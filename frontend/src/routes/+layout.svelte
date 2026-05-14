@@ -227,7 +227,7 @@
       <a
         href={item.href}
         class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
-          {$page.url.pathname === item.href ? 'text-indigo-400' : 'text-neutral-500'}"
+          {$page.url.pathname === item.href ? 'text-indigo-400' : 'text-neutral-400'}"
       >
         {#if item.href === '/'}
           <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M12 2l2.09 6.26L20 9.27l-4.91 4.73 1.18 6.73L12 17.27l-4.27 3.46 1.18-6.73L4 9.27l5.91-1.01z"/></svg>
@@ -241,7 +241,7 @@
     {/each}
     <button
       onclick={() => goto('/tasks/new')}
-      class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors text-neutral-500 hover:text-indigo-400"
+      class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors text-neutral-400 hover:text-indigo-400"
     >
       <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/></svg>
       <span class="text-xs">Neu</span>
