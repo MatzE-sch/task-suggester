@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/auto-update.log"
 PUBLIC_API_URL="${PUBLIC_API_URL:-https://task-suggester.schu.gg/api}"
 INTERVAL="${INTERVAL:-300}"  # seconds between checks, default 5 min
+export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa_github_task_suggester_deploy -o IdentitiesOnly=yes"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 
@@ -33,7 +34,8 @@ check_and_update() {
     log "Pulling and rebuilding..."
     git pull --ff-only
 
-    PUBLIC_API_URL="$PUBLIC_API_URL" docker compose -f compose.yml build
+    PUBLIC_BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    PUBLIC_API_URL="$PUBLIC_API_URL" PUBLIC_BUILD_TIME="$PUBLIC_BUILD_TIME" docker compose -f compose.yml build
     docker compose -f compose.yml up -d
 
     log "Done. Running commit: $(git rev-parse HEAD)"

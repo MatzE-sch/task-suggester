@@ -3,6 +3,9 @@ FROM node:22-alpine AS builder
 ARG PUBLIC_API_URL=http://localhost:8000
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 
+ARG PUBLIC_BUILD_TIME=
+ENV PUBLIC_BUILD_TIME=$PUBLIC_BUILD_TIME
+
 WORKDIR /app
 COPY package.json .
 RUN npm install

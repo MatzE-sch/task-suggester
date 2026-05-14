@@ -49,6 +49,7 @@ services:
       context: ./frontend
       args:
         PUBLIC_API_URL: ${PUBLIC_API_URL}
+        PUBLIC_BUILD_TIME: ${PUBLIC_BUILD_TIME:-}
     restart: unless-stopped
     depends_on:
       - backend

@@ -12,6 +12,7 @@
   import { isOnline, pendingMutations, replayMutations } from '$lib/stores/offline';
   import { loadCategories } from '$lib/stores/categories';
   import { clearDataCaches } from '$lib/cache';
+  import { PUBLIC_BUILD_TIME } from '$env/static/public';
 
   let showInviteModal = false;
   let inviteLink = '';
@@ -147,7 +148,10 @@
     </nav>
 
     <div class="border-t border-neutral-800 pt-4 space-y-1 text-sm">
-      <p class="text-xs text-neutral-500 px-1 pb-1">{$user?.username}</p>
+      <p class="text-xs text-neutral-500 px-1">{$user?.username}</p>
+      {#if PUBLIC_BUILD_TIME}
+        <p class="text-xs text-neutral-700 px-1 pb-1" title="Build-Zeit">Build: {new Date(PUBLIC_BUILD_TIME).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+      {/if}
       <div class="flex rounded-xl overflow-hidden mb-1">
         {#each [['dark', '🌙'], ['light', '☀'], ['auto', 'auto']] as [t, icon]}
           <button
@@ -185,7 +189,10 @@
         class="absolute right-4 top-14 bg-neutral-900 border border-neutral-800 rounded-2xl shadow-xl z-50 w-48 py-2 flex flex-col"
         role="menu"
       >
-        <span class="px-4 py-2 text-xs text-neutral-500">{$user?.username}</span>
+        <span class="px-4 pt-2 text-xs text-neutral-500">{$user?.username}</span>
+        {#if PUBLIC_BUILD_TIME}
+          <span class="px-4 pb-2 text-xs text-neutral-700">Build: {new Date(PUBLIC_BUILD_TIME).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        {/if}
         <div class="flex mx-3 mb-1 rounded-xl overflow-hidden border border-neutral-800">
           {#each [['dark', '🌙'], ['light', '☀'], ['auto', 'auto']] as [t, icon]}
             <button
