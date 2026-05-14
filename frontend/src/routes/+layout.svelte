@@ -6,7 +6,7 @@
   import { goto } from '$app/navigation';
   import { user, isLoggedIn, initAuth } from '$lib/stores/auth';
   import { logout, createInvite } from '$lib/api';
-  import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
+  import { showShortcutHints } from '$lib/stores/shortcuts';
   import { theme, resolveTheme } from '$lib/stores/theme';
   import type { Theme } from '$lib/stores/theme';
   import { isOnline, pendingMutations, replayMutations } from '$lib/stores/offline';
@@ -61,7 +61,7 @@
         if (e.key === 't') { e.preventDefault(); goto('/'); }
         else if (e.key === 'l') { e.preventDefault(); goto('/tasks'); }
         else if (e.key === 's') { e.preventDefault(); goto('/stats'); }
-        else if (e.key === 'n') { e.preventDefault(); newTaskSignal.update(n => n + 1); if ($page.url.pathname !== '/') goto('/'); }
+        else if (e.key === 'n') { e.preventDefault(); goto('/tasks/new'); }
       }
     }
 
@@ -240,7 +240,7 @@
       </a>
     {/each}
     <button
-      onclick={() => { newTaskSignal.update(n => n + 1); goto('/'); }}
+      onclick={() => goto('/tasks/new')}
       class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors text-neutral-500 hover:text-indigo-400"
     >
       <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/></svg>
