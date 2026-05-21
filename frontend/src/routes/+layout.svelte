@@ -6,7 +6,7 @@
   import { goto } from '$app/navigation';
   import { user, isLoggedIn, initAuth } from '$lib/stores/auth';
   import { logout, createInvite } from '$lib/api';
-  import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
+  import { showShortcutHints } from '$lib/stores/shortcuts';
   import { theme, resolveTheme } from '$lib/stores/theme';
   import type { Theme } from '$lib/stores/theme';
   import { isOnline, pendingMutations, replayMutations } from '$lib/stores/offline';
@@ -61,7 +61,7 @@
         if (e.key === 't') { e.preventDefault(); goto('/'); }
         else if (e.key === 'l') { e.preventDefault(); goto('/tasks'); }
         else if (e.key === 's') { e.preventDefault(); goto('/stats'); }
-        else if (e.key === 'n') { e.preventDefault(); newTaskSignal.update(n => n + 1); if ($page.url.pathname !== '/') goto('/'); }
+        else if (e.key === 'n') { e.preventDefault(); goto('/tasks/new'); }
       }
     }
 
@@ -121,6 +121,7 @@
   <slot />
 {:else}
 
+<div class="h-dvh flex flex-col md:block overflow-hidden">
   <!-- Desktop sidebar -->
   <aside class="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-52 bg-neutral-950 border-r border-neutral-800 p-5 z-20">
     <div class="mb-8">
@@ -196,7 +197,7 @@
         <div class="flex mx-3 mb-1 rounded-xl overflow-hidden border border-neutral-800">
           {#each [['dark', '🌙'], ['light', '☀'], ['auto', 'auto']] as [t, icon]}
             <button
-              onclick={() => { theme.set(t as Theme); }}
+              onclick={() => { theme.set(t as Theme); showMobileMenu = false; }}
               class="flex-1 py-1.5 text-xs transition-colors {$theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white hover:bg-neutral-800'}"
             >{icon}</button>
           {/each}
@@ -227,7 +228,7 @@
       <a
         href={item.href}
         class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
-          {$page.url.pathname === item.href ? 'text-indigo-400' : 'text-neutral-500'}"
+          {$page.url.pathname === item.href ? 'text-indigo-400' : 'text-neutral-400'}"
       >
         {#if item.href === '/'}
           <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M12 2l2.09 6.26L20 9.27l-4.91 4.73 1.18 6.73L12 17.27l-4.27 3.46 1.18-6.73L4 9.27l5.91-1.01z"/></svg>
@@ -240,14 +241,15 @@
       </a>
     {/each}
     <button
-      onclick={() => { newTaskSignal.update(n => n + 1); goto('/'); }}
-      class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors text-neutral-500 hover:text-indigo-400"
+      onclick={() => goto('/tasks/new')}
+      class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors text-neutral-400 hover:text-indigo-400"
     >
       <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/></svg>
       <span class="text-xs">Neu</span>
     </button>
   </nav>
 
+</div>
 {/if}
 
 {#if showInviteModal}

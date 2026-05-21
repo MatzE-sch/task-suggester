@@ -1,9 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
   import { pickSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
   import { loadCategories, categories } from '$lib/stores/categories';
-  import { showShortcutHints, newTaskSignal } from '$lib/stores/shortcuts';
+  import { showShortcutHints } from '$lib/stores/shortcuts';
   import { getCachedTasks } from '$lib/cache';
   import type { Task, SuggestMode, Category } from '$lib/types';
   import TaskCard from '$lib/components/TaskCard.svelte';
@@ -19,15 +18,10 @@
   let showBlockForm = false;
   let showEditForm = false;
   let showSnoozeForm = false;
-  let showNewTaskForm = false;
   let snoozeDate = '';
   let noTasks = false;
 
   onMount(async () => {
-    if (get(newTaskSignal) > 0) {
-      showNewTaskForm = true;
-      newTaskSignal.set(0);
-    }
     // Sofort aus Cache anzeigen
     allTasks = getCachedTasks() ?? [];
     if (allTasks.length) fetchSuggestion();
@@ -117,19 +111,6 @@
     }
   }
 
-  async function doNewTask(data: Parameters<typeof createTask>[0]) {
-    loading = true;
-    showNewTaskForm = false;
-    try {
-      await createTask(data);
-      await fetchTasks();
-    } catch (e: unknown) {
-      error = e instanceof Error ? e.message : 'Fehler';
-    } finally {
-      loading = false;
-    }
-  }
-
   function toggleModeCat(cat: Category) {
     selectedCategoryIds = selectedCategoryIds.includes(cat.id)
       ? selectedCategoryIds.filter((id) => id !== cat.id)
@@ -163,18 +144,6 @@
     </div>
   {/if}
 
-  <!-- New task inline form -->
-  {#if showNewTaskForm}
-    <div class="bg-neutral-900 rounded-2xl p-5 space-y-4">
-      <p class="font-medium text-sm text-neutral-300">Neuen Task anlegen:</p>
-      <TaskForm
-        {allTasks}
-        onSubmit={doNewTask}
-        onCancel={() => (showNewTaskForm = false)}
-      />
-    </div>
-  {/if}
-
   <!-- Task card / states -->
   {#if loading && !task}
     <div class="bg-neutral-900 rounded-2xl p-6 animate-pulse h-32"></div>
@@ -183,7 +152,7 @@
       <p class="text-2xl">🎉</p>
       <p class="font-medium">Keine offenen Tasks!</p>
       <p class="text-sm text-neutral-500">Alle Aufgaben erledigt oder blockiert.</p>
-      <button onclick={() => (showNewTaskForm = true)} class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</button>
+      <a href="/tasks/new" class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</a>
     </div>
   {:else if task && !showEditForm && !showBlockForm}
     <TaskCard {task} />
@@ -251,7 +220,7 @@
 </div>
 
 <!-- Action buttons: fixed on mobile, inline on desktop -->
-{#if task && !showEditForm && !showBlockForm && !showNewTaskForm}
+{#if task && !showEditForm && !showBlockForm}
   <!-- Desktop (md+): inline below content -->
   {#if !showSnoozeForm}
     <div class="hidden md:block space-y-3">
