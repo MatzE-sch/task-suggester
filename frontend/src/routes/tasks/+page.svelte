@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
-  import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs, getTaskLog, deleteTaskLog, updateTaskLog } from '$lib/api';
-  import { getCachedTasks, cacheActivityStats } from '$lib/cache';
+  import { onMount } from 'svelte';
+  import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs } from '$lib/api';
+  import { getCachedTasks } from '$lib/cache';
   import { loadCategories } from '$lib/stores/categories';
   import { categories } from '$lib/stores/categories';
-  import type { Task, TaskStatus, TaskType, ActivityLogEntry } from '$lib/types';
+  import type { Task, TaskStatus, TaskType } from '$lib/types';
   import { isLightColor } from '$lib/utils';
   import TaskForm from '$lib/components/TaskForm.svelte';
   import { longpress } from '$lib/actions/longpress';
@@ -22,39 +22,6 @@
   function setFilter(f: typeof filter) {
     filter = f;
     sessionStorage.setItem(FILTER_KEY, f);
-  }
-
-  // Task Log state
-  let logEntries: ActivityLogEntry[] = [];
-  let logLoading = false;
-  let pendingDeleteLogId: number | null = null;
-  let editLogId: number | null = null;
-  let editLogDate = '';
-  let datePickerInput: HTMLInputElement;
-
-  function startEditLog(entry: ActivityLogEntry) {
-    editLogId = entry.id;
-    editLogDate = entry.logged_date;
-    tick().then(() => datePickerInput?.showPicker());
-  }
-
-  async function saveEditLog() {
-    if (!editLogId || !editLogDate) return;
-    const id = editLogId;
-    const date = editLogDate;
-    editLogId = null;
-    editLogDate = '';
-    await updateTaskLog(id, { logged_date: date });
-    logEntries = logEntries.map((e) => (e.id === id ? { ...e, logged_date: date } : e));
-  }
-
-  async function handleUndoLog(entry: ActivityLogEntry) {
-    if (entry.task_id) {
-      await updateTask(entry.task_id, { status: 'open' });
-    }
-    await deleteTaskLog(entry.id);
-    logEntries = logEntries.filter((e) => e.id !== entry.id);
-    await load();
   }
 
   const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -95,7 +62,7 @@
 
   onMount(() => {
     const savedFilter = sessionStorage.getItem(FILTER_KEY) as typeof filter;
-    if (savedFilter) filter = savedFilter;
+    if (savedFilter && savedFilter !== 'done') filter = savedFilter;
 
     const cached = getCachedTasks();
     if (cached) tasks = cached;
@@ -109,44 +76,6 @@
 
   async function load() {
     tasks = await getTasks();
-  }
-
-  async function loadLog() {
-    logLoading = true;
-    try {
-      logEntries = await getTaskLog();
-    } finally {
-      logLoading = false;
-    }
-  }
-
-  $: if (filter === 'done') loadLog();
-
-  // Group log entries by date for display
-  $: logByDate = (() => {
-    const groups: { date: string; entries: ActivityLogEntry[] }[] = [];
-    for (const entry of logEntries) {
-      const last = groups[groups.length - 1];
-      if (last && last.date === entry.logged_date) {
-        last.entries.push(entry);
-      } else {
-        groups.push({ date: entry.logged_date, entries: [entry] });
-      }
-    }
-    return groups;
-  })();
-
-  function formatLogDate(dateStr: string): string {
-    return new Date(dateStr + 'T12:00:00').toLocaleDateString('de-DE', {
-      weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
-    });
-  }
-
-  async function confirmDeleteLog(id: number) {
-    await deleteTaskLog(id);
-    logEntries = logEntries.filter((e) => e.id !== id);
-    cacheActivityStats({} as never);
-    pendingDeleteLogId = null;
   }
 
   function openNewForm() {
@@ -211,9 +140,7 @@
     ? tasks
     : filter === 'recurring'
       ? tasks.filter((t) => t.task_type === 'recurring')
-      : filter === 'done'
-        ? []
-        : tasks.filter((t) => t.status === filter)
+      : tasks.filter((t) => t.status === filter)
   ).filter((t) => !search || t.title.toLowerCase().includes(search.toLowerCase()));
 
   function recurringProgress(task: Task): number {
@@ -241,9 +168,7 @@
 
   let ordered: { task: Task; depth: number }[] = [];
   $: {
-    if (filter === 'done') {
-      ordered = [];
-    } else if (filter === 'recurring') {
+    if (filter === 'recurring') {
       ordered = filtered
         .slice()
         .sort((a, b) => recurringProgress(b) - recurringProgress(a))
@@ -309,127 +234,68 @@
 
     <!-- Status filter -->
     <div class="flex gap-2 flex-wrap">
-      {#each [['open', 'Offen'], ['recurring', '🔁 Wiederkehrend'], ['in_progress', 'In Arbeit'], ['waiting', 'Wartend'], ['all', 'Alle'], ['done', 'Erledigt']] as [f, label]}
+      {#each [['open', 'Offen'], ['recurring', '🔁 Wiederkehrend'], ['in_progress', 'In Arbeit'], ['waiting', 'Wartend'], ['all', 'Alle']] as [f, label]}
         <button
           onclick={() => setFilter(f as typeof filter)}
           class="text-xs px-3 py-1.5 rounded-full transition-colors {filter === f ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'}"
         >{label}</button>
       {/each}
-      {#if filter !== 'done'}
-        <button
-          onclick={() => (sortByPriority = !sortByPriority)}
-          class="text-xs px-3 py-1.5 rounded-full transition-colors {sortByPriority ? 'bg-indigo-700 text-white' : 'text-neutral-500 hover:text-white'}"
-        >↑ Priorität</button>
-      {/if}
+      <button
+        onclick={() => (sortByPriority = !sortByPriority)}
+        class="text-xs px-3 py-1.5 rounded-full transition-colors {sortByPriority ? 'bg-indigo-700 text-white' : 'text-neutral-500 hover:text-white'}"
+      >↑ Priorität</button>
     </div>
 
-    {#if filter !== 'done'}
-      <!-- Search -->
-      <input
-        bind:value={search}
-        type="search"
-        placeholder="Suchen..."
-        class="w-full bg-neutral-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      />
+    <!-- Search -->
+    <input
+      bind:value={search}
+      type="search"
+      placeholder="Suchen..."
+      class="w-full bg-neutral-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    />
 
-      <!-- Task list -->
-      <div class="space-y-2">
-        {#each ordered as { task, depth } (task.id)}
-          <div class="bg-neutral-900 rounded-xl p-4 flex items-start justify-between gap-3" style="margin-left: {depth * 1.5}rem; {depth > 0 ? 'border-left: 2px solid #404040;' : ''}">
-            <div class="flex-1 min-w-0">
-              <p class="font-medium truncate" use:longpress>{task.title}</p>
-              <div class="flex items-center gap-3 mt-1 flex-wrap">
-                <span class="text-xs {STATUS_COLORS[task.status]}">{STATUS_LABELS[task.status]}</span>
-                {#if task.priority && task.priority !== 3}
-                  <span class="text-xs {task.priority >= 4 ? 'text-red-400' : 'text-neutral-500'}">{task.priority >= 4 ? '▲'.repeat(task.priority - 3) : '▼'.repeat(3 - task.priority)} P{task.priority}</span>
-                {/if}
-                {#each task.categories as cat}
-                  <span class="text-xs px-1.5 py-0.5 rounded {isLightColor(cat.color) ? 'cat-light-color' : ''}" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
-                {/each}
-                {#if task.task_type === 'recurring' && task.recurrence_days}
-                  {@const pct = recurringProgress(task)}
-                  <span class="text-xs text-neutral-500">🔁 {task.recurrence_days % 30 === 0 ? `${task.recurrence_days / 30}M` : task.recurrence_days % 7 === 0 ? `${task.recurrence_days / 7}W` : `${task.recurrence_days}T`}</span>
-                  {#if pct >= 0}
-                    <span class="text-xs font-medium {progressColor(pct)}">{Math.round(pct)}%</span>
-                  {/if}
-                {/if}
-                {#if task.deadline}
-                  <span class="text-xs text-neutral-500">📅 {new Date(task.deadline).toLocaleDateString('de-DE')}</span>
-                {/if}
-                {#if task.status === 'waiting' && task.snoozed_until}
-                  <span class="text-xs text-yellow-500">⏳ {new Date(task.snoozed_until).toLocaleDateString('de-DE')}</span>
-                {/if}
-              </div>
-            </div>
-            <div class="flex gap-2 shrink-0 items-center">
-              {#if task.status !== 'done'}
-                <button onclick={() => markDone(task.id)} class="text-base text-neutral-500 hover:text-green-400 transition-colors font-bold" title="Als erledigt markieren">✓</button>
+    <!-- Task list -->
+    <div class="space-y-2">
+      {#each ordered as { task, depth } (task.id)}
+        <div class="bg-neutral-900 rounded-xl p-4 flex items-start justify-between gap-3" style="margin-left: {depth * 1.5}rem; {depth > 0 ? 'border-left: 2px solid #404040;' : ''}">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium truncate" use:longpress>{task.title}</p>
+            <div class="flex items-center gap-3 mt-1 flex-wrap">
+              <span class="text-xs {STATUS_COLORS[task.status]}">{STATUS_LABELS[task.status]}</span>
+              {#if task.priority && task.priority !== 3}
+                <span class="text-xs {task.priority >= 4 ? 'text-red-400' : 'text-neutral-500'}">{task.priority >= 4 ? '▲'.repeat(task.priority - 3) : '▼'.repeat(3 - task.priority)} P{task.priority}</span>
               {/if}
-              <button onclick={() => openEditTask(task)} class="text-base text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
-              <button onclick={() => handleDelete(task.id)} class="text-base text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
+              {#each task.categories as cat}
+                <span class="text-xs px-1.5 py-0.5 rounded {isLightColor(cat.color) ? 'cat-light-color' : ''}" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
+              {/each}
+              {#if task.task_type === 'recurring' && task.recurrence_days}
+                {@const pct = recurringProgress(task)}
+                <span class="text-xs text-neutral-500">🔁 {task.recurrence_days % 30 === 0 ? `${task.recurrence_days / 30}M` : task.recurrence_days % 7 === 0 ? `${task.recurrence_days / 7}W` : `${task.recurrence_days}T`}</span>
+                {#if pct >= 0}
+                  <span class="text-xs font-medium {progressColor(pct)}">{Math.round(pct)}%</span>
+                {/if}
+              {/if}
+              {#if task.deadline}
+                <span class="text-xs text-neutral-500">📅 {new Date(task.deadline).toLocaleDateString('de-DE')}</span>
+              {/if}
+              {#if task.status === 'waiting' && task.snoozed_until}
+                <span class="text-xs text-yellow-500">⏳ {new Date(task.snoozed_until).toLocaleDateString('de-DE')}</span>
+              {/if}
             </div>
           </div>
-        {/each}
-
-        {#if ordered.length === 0}
-          <p class="text-neutral-600 text-sm text-center py-8">Keine Tasks vorhanden.</p>
-        {/if}
-      </div>
-    {:else}
-      <!-- Task Log -->
-      {#if logLoading}
-        <p class="text-neutral-600 text-sm text-center py-8">Laden...</p>
-      {:else if logByDate.length === 0}
-        <p class="text-neutral-600 text-sm text-center py-8">Keine erledigten Einträge.</p>
-      {:else}
-        <input type="date" bind:this={datePickerInput} bind:value={editLogDate} onchange={saveEditLog} class="sr-only" />
-        <div class="space-y-4">
-          {#each logByDate as group}
-            <div>
-              <div class="text-xs text-neutral-500 font-medium px-1 pb-2 border-b border-neutral-800 mb-2">
-                {formatLogDate(group.date)}
-              </div>
-              <div class="space-y-1.5">
-                {#each group.entries as entry (entry.id)}
-                  <div class="bg-neutral-900 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
-                    <div class="flex-1 min-w-0">
-                      {#if entry.task_title}
-                        <span class="text-sm font-medium truncate block">
-                          {#if entry.task_type === 'recurring'}<span class="text-neutral-500 mr-1">🔁</span>{/if}{entry.task_title}
-                        </span>
-                      {:else}
-                        <span class="text-sm text-neutral-600 italic">gelöscht</span>
-                      {/if}
-                      {#if entry.category_ids.length > 0}
-                        <div class="flex flex-wrap gap-1 mt-1">
-                          {#each entry.category_ids as catId}
-                            {@const cat = $categories.find(c => c.id === catId)}
-                            {#if cat}
-                              <span class="text-xs px-1.5 py-0.5 rounded {isLightColor(cat.color) ? 'cat-light-color' : ''}" style="background-color: {cat.color}22; color: {cat.color}">{cat.name}</span>
-                            {/if}
-                          {/each}
-                        </div>
-                      {/if}
-                    </div>
-                    <div class="flex gap-2 shrink-0 items-center">
-                      {#if entry.task_id}
-                        <button onclick={() => handleUndoLog(entry)} class="text-sm text-neutral-500 hover:text-blue-400 transition-colors" title="Als nicht erledigt markieren">↺</button>
-                      {/if}
-                      <button onclick={() => startEditLog(entry)} class="text-sm text-neutral-500 hover:text-yellow-400 transition-colors" title="Datum ändern">📅</button>
-                      {#if pendingDeleteLogId === entry.id}
-                        <button onclick={() => confirmDeleteLog(entry.id)} class="text-xs px-2 py-0.5 bg-red-700 hover:bg-red-600 text-white rounded-lg transition-colors">Löschen</button>
-                        <button onclick={() => (pendingDeleteLogId = null)} class="text-xs px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition-colors">Abbruch</button>
-                      {:else}
-                        <button onclick={() => (pendingDeleteLogId = entry.id)} class="text-sm text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
-                      {/if}
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            </div>
-          {/each}
+          <div class="flex gap-2 shrink-0 items-center">
+            {#if task.status !== 'done'}
+              <button onclick={() => markDone(task.id)} class="text-base text-neutral-500 hover:text-green-400 transition-colors font-bold" title="Als erledigt markieren">✓</button>
+            {/if}
+            <button onclick={() => openEditTask(task)} class="text-base text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
+            <button onclick={() => handleDelete(task.id)} class="text-base text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
+          </div>
         </div>
+      {/each}
+
+      {#if ordered.length === 0}
+        <p class="text-neutral-600 text-sm text-center py-8">Keine Tasks vorhanden.</p>
       {/if}
-    {/if}
+    </div>
   </div>
 {/if}

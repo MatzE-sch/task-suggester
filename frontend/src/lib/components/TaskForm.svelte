@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Category, Task, TaskStatus, TaskType } from '$lib/types';
   import { categories } from '$lib/stores/categories';
   import { isLightColor } from '$lib/utils';
@@ -20,6 +21,9 @@
   export let allTasks: Task[] = [];
 
   const isEdit = !!task.id;
+
+  let titleInput: HTMLInputElement;
+  onMount(() => { if (!isEdit) titleInput?.focus(); });
 
   let title = task.title ?? '';
   let description = task.description ?? '';
@@ -105,6 +109,7 @@
 
 <div class="space-y-4" onkeydown={(e) => { if (e.ctrlKey && e.key === 'Enter') submit(); else if (e.key === 'Escape') onCancel?.(); }}>
   <input
+    bind:this={titleInput}
     bind:value={title}
     type="text"
     placeholder="Task-Titel *"
