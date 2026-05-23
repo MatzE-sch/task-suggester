@@ -222,7 +222,7 @@
   </main>
 
   <!-- Mobile bottom nav -->
-  <nav class="md:hidden shrink-0 z-50 bg-neutral-950 border-t border-neutral-800 flex">
+  <nav class="md:hidden shrink-0 z-10 bg-neutral-950 border-t border-neutral-800 flex">
     {#each NAV as item}
       <a
         href={item.href}
