@@ -218,12 +218,12 @@
   </header>
 
   <!-- Content -->
-  <main class="md:ml-52 p-4 max-w-2xl mx-auto md:mx-0 w-full flex-1 min-h-0 overflow-y-auto md:flex-none md:h-screen pb-6 md:pb-8">
+  <main class="md:ml-52 p-4 max-w-2xl mx-auto md:mx-0 w-full flex-1 min-h-0 overflow-y-auto md:flex-none md:h-screen pb-20 md:pb-8">
     <slot />
   </main>
 
   <!-- Mobile bottom nav -->
-  <nav class="md:hidden shrink-0 z-10 bg-neutral-950 border-t border-neutral-800 flex">
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-10 bg-neutral-950 border-t border-neutral-800 flex">
     {#each NAV as item}
       <a
         href={item.href}
