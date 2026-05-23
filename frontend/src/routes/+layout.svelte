@@ -121,7 +121,7 @@
   <slot />
 {:else}
 
-<div class="h-dvh flex flex-col md:block overflow-hidden">
+<div class="flex-1 flex flex-col md:block overflow-hidden">
   <!-- Desktop sidebar -->
   <aside class="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-52 bg-neutral-950 border-r border-neutral-800 p-5 z-20">
     <div class="mb-8">
