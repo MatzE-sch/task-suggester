@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { getTasks, createTask, deleteTask, updateTask, taskAction, downloadIcs } from '$lib/api';
   import { getCachedTasks } from '$lib/cache';
   import { loadCategories } from '$lib/stores/categories';
@@ -12,7 +12,7 @@
   let tasks: Task[] = [];
   let showForm = false;
   let editTask: Task | null = null;
-  let filter: TaskStatus | 'all' | 'recurring' = 'all';
+  let filter: TaskStatus | 'all' | 'recurring' = 'open';
   let loading = false;
   let search = '';
   let sortByPriority = false;

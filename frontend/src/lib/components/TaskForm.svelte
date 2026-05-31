@@ -211,7 +211,7 @@
             onclick={() => toggleCat(cat.id)}
             class="text-xs px-2.5 py-1 rounded-full transition-all {!selectedCats.includes(cat.id) && isLightColor(cat.color) ? 'cat-light-color' : ''}"
             style={selectedCats.includes(cat.id)
-              ? `background-color: ${cat.color}; color: ${isLightColor(cat.color) ? '#111827' : 'white'}`
+              ? `background-color: ${cat.color}; color: ${isLightColor(cat.color) ? '#111827' : 'white'}; border: 1px solid transparent`
               : `background-color: ${cat.color}22; color: ${cat.color}; border: 1px solid ${cat.color}44`}
           >
             {#if cat.icon}{cat.icon} {/if}{cat.name}
