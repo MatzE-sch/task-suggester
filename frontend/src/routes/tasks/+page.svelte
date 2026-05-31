@@ -7,7 +7,6 @@
   import type { Task, TaskStatus, TaskType } from '$lib/types';
   import { isLightColor } from '$lib/utils';
   import TaskForm from '$lib/components/TaskForm.svelte';
-  import { longpress } from '$lib/actions/longpress';
 
   let tasks: Task[] = [];
   let showForm = false;
@@ -16,6 +15,11 @@
   let loading = false;
   let search = '';
   let sortByPriority = false;
+  let expandedTaskId: number | null = null;
+
+  function toggleExpand(id: number) {
+    expandedTaskId = expandedTaskId === id ? null : id;
+  }
 
   const FILTER_KEY = 'tasks-filter';
 
@@ -122,6 +126,7 @@
 
   async function handleDelete(id: number) {
     if (!confirm('Task wirklich löschen?')) return;
+    if (expandedTaskId === id) expandedTaskId = null;
     await deleteTask(id);
     await load();
   }
@@ -257,9 +262,16 @@
     <!-- Task list -->
     <div class="space-y-2">
       {#each ordered as { task, depth } (task.id)}
-        <div class="bg-neutral-900 rounded-xl p-4 flex items-start justify-between gap-3" style="margin-left: {depth * 1.5}rem; {depth > 0 ? 'border-left: 2px solid #404040;' : ''}">
-          <div class="flex-1 min-w-0">
-            <p class="font-medium truncate" use:longpress>{task.title}</p>
+        <div
+          class="bg-neutral-900 rounded-xl overflow-hidden cursor-pointer select-none"
+          style="margin-left: {depth * 1.5}rem; {depth > 0 ? 'border-left: 2px solid #404040;' : ''}"
+          onclick={() => toggleExpand(task.id)}
+          role="button"
+          tabindex="0"
+          onkeydown={(e) => e.key === 'Enter' && toggleExpand(task.id)}
+        >
+          <div class="p-4">
+            <p class="font-medium">{task.title}</p>
             <div class="flex items-center gap-3 mt-1 flex-wrap">
               <span class="text-xs {STATUS_COLORS[task.status]}">{STATUS_LABELS[task.status]}</span>
               {#if task.priority && task.priority !== 3}
@@ -283,12 +295,16 @@
               {/if}
             </div>
           </div>
-          <div class="flex gap-2 shrink-0 items-center">
-            {#if task.status !== 'done'}
-              <button onclick={() => markDone(task.id)} class="text-base text-neutral-500 hover:text-green-400 transition-colors font-bold" title="Als erledigt markieren">✓</button>
-            {/if}
-            <button onclick={() => openEditTask(task)} class="text-base text-neutral-500 hover:text-yellow-400 transition-colors">✏</button>
-            <button onclick={() => handleDelete(task.id)} class="text-base text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
+          <div class="task-actions {expandedTaskId === task.id ? 'open' : ''}">
+            <div>
+              <div class="px-3 pb-3 pt-2 flex gap-2 border-t border-neutral-800" onclick={(e) => e.stopPropagation()}>
+                {#if task.status !== 'done'}
+                  <button onclick={() => markDone(task.id)} class="flex-1 py-2 rounded-xl bg-green-900/40 text-green-400 hover:bg-green-900/70 text-sm transition-colors font-medium">✓ Erledigt</button>
+                {/if}
+                <button onclick={() => openEditTask(task)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-yellow-400 text-sm transition-colors">✏ Bearbeiten</button>
+                <button onclick={() => handleDelete(task.id)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-red-400 text-sm transition-colors">🗑 Löschen</button>
+              </div>
+            </div>
           </div>
         </div>
       {/each}
@@ -299,3 +315,17 @@
     </div>
   </div>
 {/if}
+
+<style>
+  .task-actions {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 200ms ease;
+  }
+  .task-actions.open {
+    grid-template-rows: 1fr;
+  }
+  .task-actions > div {
+    overflow: hidden;
+  }
+</style>
