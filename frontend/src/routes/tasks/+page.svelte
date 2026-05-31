@@ -303,7 +303,7 @@
             <div>
               <div class="px-3 pb-3 pt-2 flex gap-2 border-t border-neutral-800" onclick={(e) => e.stopPropagation()}>
                 {#if task.status !== 'done'}
-                  <button onclick={() => markDone(task.id)} class="flex-1 py-2 rounded-xl bg-green-900/40 text-green-400 hover:bg-green-900/70 text-sm transition-colors font-medium">✓ Erledigt</button>
+                  <button onclick={() => markDone(task.id)} class="flex-1 py-2 rounded-xl bg-green-700 hover:bg-green-600 text-white text-sm transition-colors font-medium">✓ Erledigt</button>
                 {/if}
                 <button onclick={() => openEditTask(task)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-yellow-400 text-sm transition-colors">✏ Bearbeiten</button>
                 <button onclick={() => handleDelete(task.id)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-red-400 text-sm transition-colors">🗑 Löschen</button>

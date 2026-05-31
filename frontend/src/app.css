@@ -62,3 +62,4 @@
 /* Light mode: darken light text for contrast */
 .light .text-amber-400 { color: rgb(120 53 15); }
 .light .text-yellow-400 { color: rgb(133 77 14); }
+.light .text-red-400 { color: rgb(185 28 28); }
