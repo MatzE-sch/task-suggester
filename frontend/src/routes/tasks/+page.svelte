@@ -46,7 +46,10 @@
     return document.querySelector('main');
   }
 
+  let skipSaveScroll = false;
+
   function saveScroll() {
+    if (skipSaveScroll) return;
     const el = getMain();
     if (el) sessionStorage.setItem(SCROLL_KEY, String(el.scrollTop));
   }
@@ -58,6 +61,12 @@
       const el = getMain();
       if (el) el.scrollTop = parseInt(saved);
     }
+  }
+
+  function scrollToTopProgrammatic() {
+    skipSaveScroll = true;
+    getMain()?.scrollTo({ top: 0 });
+    requestAnimationFrame(() => { skipSaveScroll = false; });
   }
 
   onMount(() => {
@@ -81,12 +90,12 @@
   function openNewForm() {
     showForm = true;
     editTask = null;
-    getMain()?.scrollTo({ top: 0 });
+    scrollToTopProgrammatic();
   }
 
   function openEditTask(task: Task) {
     editTask = task;
-    getMain()?.scrollTo({ top: 0 });
+    scrollToTopProgrammatic();
   }
 
   function cancelNew() {
