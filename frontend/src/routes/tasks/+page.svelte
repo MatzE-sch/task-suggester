@@ -46,27 +46,17 @@
     return document.querySelector('main');
   }
 
-  let skipSaveScroll = false;
+  let savedScrollPos = 0;
 
   function saveScroll() {
-    if (skipSaveScroll) return;
     const el = getMain();
     if (el) sessionStorage.setItem(SCROLL_KEY, String(el.scrollTop));
   }
 
   async function restoreScroll() {
     await tick();
-    const saved = sessionStorage.getItem(SCROLL_KEY);
-    if (saved) {
-      const el = getMain();
-      if (el) el.scrollTop = parseInt(saved);
-    }
-  }
-
-  function scrollToTopProgrammatic() {
-    skipSaveScroll = true;
-    getMain()?.scrollTo({ top: 0 });
-    requestAnimationFrame(() => { skipSaveScroll = false; });
+    const el = getMain();
+    if (el) el.scrollTop = savedScrollPos;
   }
 
   onMount(() => {
@@ -75,6 +65,9 @@
 
     const cached = getCachedTasks();
     if (cached) tasks = cached;
+
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) savedScrollPos = parseInt(saved);
 
     Promise.all([loadCategories(), load()]).then(() => restoreScroll());
 
@@ -88,14 +81,16 @@
   }
 
   function openNewForm() {
+    savedScrollPos = getMain()?.scrollTop ?? 0;
     showForm = true;
     editTask = null;
-    scrollToTopProgrammatic();
+    getMain()?.scrollTo({ top: 0 });
   }
 
   function openEditTask(task: Task) {
+    savedScrollPos = getMain()?.scrollTop ?? 0;
     editTask = task;
-    scrollToTopProgrammatic();
+    getMain()?.scrollTo({ top: 0 });
   }
 
   function cancelNew() {
