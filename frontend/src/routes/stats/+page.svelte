@@ -27,6 +27,12 @@
   let editLogId: number | null = null;
   let editLogDate = '';
   let datePickerInput: HTMLInputElement;
+  let expandedLogId: number | null = null;
+
+  function toggleLogExpand(id: number) {
+    if (expandedLogId !== id) pendingDeleteLogId = null;
+    expandedLogId = expandedLogId === id ? null : id;
+  }
 
   function startEditLog(entry: ActivityLogEntry) {
     editLogId = entry.id;
@@ -279,10 +285,16 @@
             </div>
             <div class="space-y-1.5">
               {#each group.entries as entry (entry.id)}
-                <div class="bg-neutral-900 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
-                  <div class="flex-1 min-w-0">
+                <div
+                  class="bg-neutral-900 rounded-xl overflow-hidden cursor-pointer select-none"
+                  onclick={() => toggleLogExpand(entry.id)}
+                  role="button"
+                  tabindex="0"
+                  onkeydown={(e) => e.key === 'Enter' && toggleLogExpand(entry.id)}
+                >
+                  <div class="px-3 py-2.5">
                     {#if entry.task_title}
-                      <span class="text-sm font-medium truncate block">
+                      <span class="text-sm font-medium block">
                         {#if entry.task_type === 'recurring'}<span class="text-neutral-500 mr-1">🔁</span>{/if}{entry.task_title}
                       </span>
                     {:else}
@@ -299,18 +311,22 @@
                       </div>
                     {/if}
                   </div>
-                  <div class="flex gap-2 shrink-0 items-center">
-                    {#if entry.task_id}
-                      <button onclick={() => handleReopenTask(entry)} class="text-sm text-neutral-500 hover:text-green-400 transition-colors" title="Task öffnen (im Log behalten)">↗</button>
-                      <button onclick={() => handleUndoLog(entry)} class="text-sm text-neutral-500 hover:text-blue-400 transition-colors" title="Als nicht erledigt markieren (aus Log entfernen)">↺</button>
-                    {/if}
-                    <button onclick={() => startEditLog(entry)} class="text-sm text-neutral-500 hover:text-yellow-400 transition-colors" title="Datum ändern">📅</button>
-                    {#if pendingDeleteLogId === entry.id}
-                      <button onclick={() => confirmDeleteLog(entry.id)} class="text-xs px-2 py-0.5 bg-red-700 hover:bg-red-600 text-white rounded-lg transition-colors">Löschen</button>
-                      <button onclick={() => (pendingDeleteLogId = null)} class="text-xs px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition-colors">Abbruch</button>
-                    {:else}
-                      <button onclick={() => (pendingDeleteLogId = entry.id)} class="text-sm text-neutral-500 hover:text-red-400 transition-colors">🗑</button>
-                    {/if}
+                  <div class="task-actions {expandedLogId === entry.id ? 'open' : ''}">
+                    <div>
+                      <div class="px-3 pb-3 pt-2 flex gap-2 border-t border-neutral-800" onclick={(e) => e.stopPropagation()}>
+                        {#if entry.task_id}
+                          <button onclick={() => handleReopenTask(entry)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors text-neutral-300" title="Task öffnen">↗ Öffnen</button>
+                          <button onclick={() => handleUndoLog(entry)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors text-blue-400" title="Rückgängig">↺ Rückgängig</button>
+                        {/if}
+                        <button onclick={() => startEditLog(entry)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors text-yellow-400" title="Datum ändern">📅 Datum</button>
+                        {#if pendingDeleteLogId === entry.id}
+                          <button onclick={() => confirmDeleteLog(entry.id)} class="flex-1 py-2 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm transition-colors font-medium">Löschen</button>
+                          <button onclick={() => (pendingDeleteLogId = null)} class="flex-1 py-2 rounded-xl bg-neutral-700 hover:bg-neutral-600 text-neutral-300 text-sm transition-colors">Abbruch</button>
+                        {:else}
+                          <button onclick={() => (pendingDeleteLogId = entry.id)} class="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-red-400 text-sm transition-colors">🗑 Löschen</button>
+                        {/if}
+                      </div>
+                    </div>
                   </div>
                 </div>
               {/each}
@@ -321,3 +337,17 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .task-actions {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 200ms ease;
+  }
+  .task-actions.open {
+    grid-template-rows: 1fr;
+  }
+  .task-actions > div {
+    overflow: hidden;
+  }
+</style>
