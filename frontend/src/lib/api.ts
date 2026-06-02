@@ -80,6 +80,16 @@ export async function getMe(): Promise<User> {
   }
 }
 
+export async function refreshToken(): Promise<void> {
+  if (offline()) return;
+  try {
+    const data = await request<{ access_token: string }>('/auth/refresh', { method: 'POST' });
+    localStorage.setItem('token', data.access_token);
+  } catch {
+    // Fehler beim Refresh sind nicht kritisch — bestehender Token bleibt gültig
+  }
+}
+
 export function logout() {
   localStorage.removeItem('token');
 }

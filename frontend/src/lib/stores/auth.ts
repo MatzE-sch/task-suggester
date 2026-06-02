@@ -9,9 +9,12 @@ export function initAuth() {
   if (!browser) return;
   const token = localStorage.getItem('token');
   if (!token) return;
-  import('../api').then(({ getMe }) =>
+  import('../api').then(({ getMe, refreshToken }) =>
     getMe()
-      .then((u) => user.set(u))
+      .then((u) => {
+        user.set(u);
+        refreshToken();
+      })
       .catch((e) => {
         // TypeError = Netzwerkfehler → Token behalten, nächstes Mal online neu validieren
         if (e instanceof TypeError) return;
