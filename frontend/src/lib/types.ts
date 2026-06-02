@@ -1,5 +1,5 @@
 export type TaskStatus = 'open' | 'in_progress' | 'waiting' | 'done' | 'skipped';
-export type SuggestMode = 'random' | 'deadline' | 'category' | 'recurring';
+export type SuggestMode = 'random' | 'deadline' | 'category' | 'recurring' | 'prio';
 
 export interface Category {
   id: number;

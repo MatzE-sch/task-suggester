@@ -265,6 +265,9 @@ export function pickSuggestion(tasks: Task[], mode: SuggestMode, categoryIds: nu
     const rec = eligible.filter((t) => t.task_type === 'recurring');
     if (rec.length > 0) return rec.sort((a, b) => recurringPct(b) - recurringPct(a))[0];
   }
+  if (mode === 'prio') {
+    return eligible.sort((a, b) => b.priority - a.priority)[0];
+  }
   return eligible[Math.floor(Math.random() * eligible.length)];
 }
 
