@@ -315,19 +315,30 @@ export async function getInvites(): Promise<InviteCode[]> {
 // ICS Export — client-side aus gecachten Tasks
 export function downloadIcs(): void {
   const tasks = getCachedTasks() ?? [];
-  const statusMap: Record<string, string> = {
-    open: 'NEEDS-ACTION', in_progress: 'IN-PROCESS',
-    waiting: 'NEEDS-ACTION', done: 'COMPLETED', skipped: 'CANCELLED',
-  };
+
+  function toIcsDate(iso: string): string {
+    return iso.slice(0, 10).replace(/-/g, '');
+  }
+  function nextIcsDate(iso: string): string {
+    const d = new Date(iso.slice(0, 10) + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10).replace(/-/g, '');
+  }
+
+  const todayIso = new Date().toISOString();
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Task Suggester//DE'];
   for (const t of tasks) {
-    lines.push('BEGIN:VTODO');
+    const startDate = toIcsDate(t.deadline ?? todayIso);
+    const endDate = nextIcsDate(t.deadline ?? todayIso);
+    lines.push('BEGIN:VEVENT');
     lines.push(`UID:${t.id}@task-suggester`);
     lines.push(`SUMMARY:${t.title.replace(/\n/g, '\\n')}`);
     if (t.description) lines.push(`DESCRIPTION:${t.description.replace(/\n/g, '\\n')}`);
-    if (t.deadline) lines.push(`DUE;VALUE=DATE:${t.deadline.slice(0, 10).replace(/-/g, '')}`);
-    lines.push(`STATUS:${statusMap[t.status] ?? 'NEEDS-ACTION'}`);
-    lines.push('END:VTODO');
+    lines.push(`DTSTART;VALUE=DATE:${startDate}`);
+    lines.push(`DTEND;VALUE=DATE:${endDate}`);
+    if (t.status === 'skipped') lines.push('STATUS:CANCELLED');
+    else lines.push('STATUS:CONFIRMED');
+    lines.push('END:VEVENT');
   }
   lines.push('END:VCALENDAR');
   const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
