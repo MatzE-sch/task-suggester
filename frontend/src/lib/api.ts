@@ -325,11 +325,11 @@ export function downloadIcs(): void {
     return d.toISOString().slice(0, 10).replace(/-/g, '');
   }
 
-  const todayIso = new Date().toISOString();
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Task Suggester//DE'];
   for (const t of tasks) {
-    const startDate = toIcsDate(t.deadline ?? todayIso);
-    const endDate = nextIcsDate(t.deadline ?? todayIso);
+    if (!t.deadline) continue;
+    const startDate = toIcsDate(t.deadline);
+    const endDate = nextIcsDate(t.deadline);
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:${t.id}@task-suggester`);
     lines.push(`SUMMARY:${t.title.replace(/\n/g, '\\n')}`);
