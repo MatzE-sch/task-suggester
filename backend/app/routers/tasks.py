@@ -1,3 +1,4 @@
+import logging
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +14,7 @@ from app.services.auth import get_current_user
 from app.services.suggest import auto_reset_tasks
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _get_own_task(task_id: int, user: User, db: Session) -> Task:
@@ -53,6 +55,16 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db), user: User = De
     _apply_relations(task, data.category_ids, data.dependency_ids, db)
     db.commit()
     db.refresh(task)
+    logger.info(
+        "task created",
+        extra={
+            "event": "task.created",
+            "task_id": task.id,
+            "task_type": task.task_type,
+            "category_ids": [c.id for c in task.categories],
+            "user_id": user.id,
+        },
+    )
     return TaskOut.from_orm_task(task)
 
 
@@ -165,6 +177,10 @@ def delete_task(task_id: int, db: Session = Depends(get_db), user: User = Depend
     task = _get_own_task(task_id, user, db)
     db.delete(task)
     db.commit()
+    logger.info(
+        "task deleted",
+        extra={"event": "task.deleted", "task_id": task_id, "user_id": user.id},
+    )
 
 
 @router.post("/{task_id}/action", response_model=TaskOut)
@@ -239,4 +255,14 @@ def task_action(task_id: int, body: TaskActionRequest, db: Session = Depends(get
 
     db.commit()
     db.refresh(task)
+    logger.info(
+        "task action",
+        extra={
+            "event": "task.action",
+            "action": body.action,
+            "task_id": task.id,
+            "task_type": task.task_type,
+            "user_id": user.id,
+        },
+    )
     return TaskOut.from_orm_task(task)

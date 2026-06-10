@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -10,6 +11,7 @@ from app.schemas.user import UserCreate, UserOut, Token
 from app.services.auth import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
@@ -29,6 +31,7 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
     invite.used_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(user)
+    logger.info("user registered", extra={"event": "user.registered", "user_id": user.id})
     return user
 
 

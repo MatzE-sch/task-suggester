@@ -121,7 +121,7 @@
 <div class="py-6 space-y-6">
   <!-- Mode selector -->
   <div class="flex items-center gap-2 flex-wrap">
-    {#each [['random', 'Zufällig'], ['deadline', 'Deadline'], ['category', 'Kategorie'], ['recurring', 'Wiederkehrend']] as [m, label]}
+    {#each [['random', 'Zufällig'], ['deadline', 'Deadline'], ['category', 'Kategorie'], ['recurring', 'Wiederkehrend'], ['prio', 'Prio']] as [m, label]}
       <button
         onclick={() => { mode = m as SuggestMode; fetchSuggestion(); }}
         class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors {mode === m ? 'bg-indigo-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'}"

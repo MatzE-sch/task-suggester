@@ -1,10 +1,17 @@
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import SessionLocal, engine
+from app.logging_config import setup_logging
+from app.middleware.http_logging import HTTPLoggingMiddleware
 from app.routers import auth, tasks, categories, suggest, export, invites
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Ordered by user preference [2,5,6,1,4,3,11,12,14,13,8,7,10]
 DEFAULT_CATEGORIES = [
@@ -58,6 +65,18 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Task Suggester", version="1.0.0", lifespan=lifespan)
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "unhandled exception",
+        exc_info=exc,
+        extra={"event": "error.unhandled", "path": request.url.path},
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+app.add_middleware(HTTPLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

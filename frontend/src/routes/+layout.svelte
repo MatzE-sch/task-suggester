@@ -55,6 +55,11 @@
         ctrlHoldTimer = setTimeout(() => showShortcutHints.set(true), 1000);
       }
 
+      if (e.key === 'Escape' && inInput) {
+        target.blur();
+        return;
+      }
+
       if (inInput) return;
 
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
