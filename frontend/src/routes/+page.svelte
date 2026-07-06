@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { pickSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
   import { loadCategories, categories } from '$lib/stores/categories';
+  import { isLoggedIn } from '$lib/stores/auth';
   import { showShortcutHints } from '$lib/stores/shortcuts';
   import { getCachedTasks } from '$lib/cache';
   import type { Task, SuggestMode, Category } from '$lib/types';
@@ -182,7 +183,7 @@
       <p class="text-2xl">🎉</p>
       <p class="font-medium">Keine offenen Tasks!</p>
       <p class="text-sm text-neutral-500">Alle Aufgaben erledigt oder blockiert.</p>
-      {#if allTasks.length === 0}
+      {#if allTasks.length === 0 && $isLoggedIn}
         <p class="text-xs text-neutral-600">Noch keine Tasks geladen — einmal mit Internet öffnen.</p>
       {/if}
       <a href="/tasks/new" class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</a>

@@ -8,7 +8,7 @@ import {
   cacheUser, getCachedUser,
   cacheBlockSettings, getCachedBlockSettings,
 } from './cache';
-import { queueMutation } from './stores/offline';
+import { queueMutation, cancelTempTask } from './stores/offline';
 
 const BASE = PUBLIC_API_URL;
 
@@ -25,6 +25,12 @@ function offline(): boolean {
 function getToken(): string | null {
   if (!browser) return null;
   return localStorage.getItem('token');
+}
+
+// Gastmodus (kein Login): rein lokal arbeiten, Mutationen sammeln sich in der
+// Offline-Queue und werden beim Login in den Account hochgeladen
+function localOnly(): boolean {
+  return offline() || !getToken();
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -93,6 +99,7 @@ export function logout() {
 
 // Tasks
 export async function getTasks(): Promise<Task[]> {
+  if (!getToken()) return getCachedTasks() ?? [];
   try {
     const tasks = await request<Task[]>('/tasks');
     cacheTasks(tasks);
@@ -114,7 +121,7 @@ export async function createTask(data: {
   category_ids?: number[];
   dependency_ids?: number[];
 }): Promise<Task> {
-  if (offline()) {
+  if (localOnly()) {
     const now = new Date().toISOString();
     const tempTask: Task = {
       id: -Date.now(),
@@ -135,7 +142,7 @@ export async function createTask(data: {
       dependency_ids: data.dependency_ids ?? [],
     };
     cacheTasks([...(getCachedTasks() ?? []), tempTask]);
-    queueMutation('POST', '/tasks', JSON.stringify(data));
+    queueMutation('POST', '/tasks', JSON.stringify(data), tempTask.id);
     return tempTask;
   }
   const task = await request<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
@@ -155,7 +162,7 @@ export async function updateTask(id: number, data: Partial<{
   category_ids: number[];
   dependency_ids: number[];
 }>): Promise<Task> {
-  if (offline()) {
+  if (localOnly()) {
     const cached = getCachedTasks() ?? [];
     const existing = cached.find((t) => t.id === id);
     if (!existing) throw new Error('Task nicht gefunden');
@@ -171,7 +178,13 @@ export async function updateTask(id: number, data: Partial<{
 }
 
 export async function deleteTask(id: number): Promise<void> {
-  if (offline()) {
+  if (id < 0) {
+    // Nie gesyncter Temp-Task: komplett aus Queue + Cache entfernen, nie zum Server
+    cancelTempTask(id);
+    cacheTasks((getCachedTasks() ?? []).filter((t) => t.id !== id));
+    return;
+  }
+  if (localOnly()) {
     cacheTasks((getCachedTasks() ?? []).filter((t) => t.id !== id));
     queueMutation('DELETE', `/tasks/${id}`, null);
     return;
@@ -190,7 +203,7 @@ export async function taskAction(id: number, action: string, newTask?: {
   const logged_date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const body = JSON.stringify({ action, new_task: newTask, snoozed_until: snoozedUntil, logged_date });
 
-  if (offline()) {
+  if (localOnly()) {
     const cached = getCachedTasks() ?? [];
     const existing = cached.find((t) => t.id === id);
     if (!existing) throw new Error('Task nicht gefunden');
@@ -216,6 +229,7 @@ export async function taskAction(id: number, action: string, newTask?: {
 }
 
 export async function getActivityStats(): Promise<ActivityStats> {
+  if (!getToken()) return getCachedActivityStats() ?? {};
   try {
     const stats = await request<ActivityStats>('/tasks/stats/activity');
     cacheActivityStats(stats);
@@ -227,9 +241,14 @@ export async function getActivityStats(): Promise<ActivityStats> {
   }
 }
 
-// Task Log
+// Task Log — Server-only; als Gast/offline leer statt Fehler
 export async function getTaskLog(): Promise<ActivityLogEntry[]> {
-  return request<ActivityLogEntry[]>('/tasks/log');
+  if (localOnly()) return [];
+  try {
+    return await request<ActivityLogEntry[]>('/tasks/log');
+  } catch {
+    return [];
+  }
 }
 
 export async function deleteTaskLog(id: number): Promise<void> {
@@ -284,6 +303,7 @@ export function getSuggestion(mode: SuggestMode, categoryIds: number[] = []): Ta
 
 // Categories
 export async function getCategories(): Promise<Category[]> {
+  if (!getToken()) return getCachedCategories() ?? [];
   try {
     const cats = await request<Category[]>('/categories');
     cacheCategories(cats);
@@ -309,6 +329,9 @@ export async function deleteCategory(id: number): Promise<void> {
 
 // Block-Settings (App-Blocker der Android-App)
 export async function getBlockSettings(): Promise<BlockSettings> {
+  if (!getToken()) {
+    return getCachedBlockSettings() ?? { enabled: false, blocked_packages: [], schedule_windows: [] };
+  }
   try {
     const s = await request<BlockSettings>('/block-settings');
     cacheBlockSettings(s);
@@ -322,6 +345,8 @@ export async function getBlockSettings(): Promise<BlockSettings> {
 
 export async function putBlockSettings(s: BlockSettings): Promise<BlockSettings> {
   cacheBlockSettings(s);
+  // Gast: nur lokal speichern, nie queuen — Geräte-Config gehört nicht in den Account-Merge
+  if (!getToken()) return s;
   if (offline()) {
     queueMutation('PUT', '/block-settings', JSON.stringify(s));
     return s;

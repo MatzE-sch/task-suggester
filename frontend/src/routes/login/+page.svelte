@@ -1,8 +1,12 @@
 <script lang="ts">
+  import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
-  import { login, register, getMe } from '$lib/api';
+  import { login, register, getMe, getTasks } from '$lib/api';
+  import { loadCategories } from '$lib/stores/categories';
+  import { replayMutations, clearQueue, pendingMutations } from '$lib/stores/offline';
+  import { clearDataCaches } from '$lib/cache';
 
   let username = '';
   let password = '';
@@ -15,6 +19,11 @@
     error = '';
     loading = true;
     try {
+      // Account-Wechsel (es war schon ein Token da): kein Gast-Merge, keine Daten-Leaks
+      if (localStorage.getItem('token')) {
+        clearQueue();
+        clearDataCaches();
+      }
       if (mode === 'login') {
         await login(username, password);
       } else {
@@ -23,6 +32,13 @@
       }
       const me = await getMe();
       user.set(me);
+      // Gast-Arbeit in den Account hochladen (Queue hat jetzt einen Token)
+      await replayMutations();
+      if (get(pendingMutations).length === 0) {
+        // Voller Sync gelungen → Server ist die Wahrheit
+        await Promise.all([getTasks(), loadCategories()]).catch(() => {});
+      }
+      // Teil-Replay: lokalen Merge-Cache behalten, Rest läuft beim nächsten 'online'
       goto('/');
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';

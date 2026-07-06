@@ -43,3 +43,8 @@ export function clearDataCaches(): void {
   localStorage.removeItem(KEYS.categories);
   localStorage.removeItem(KEYS.activityStats);
 }
+
+export function clearUserCache(): void {
+  if (!browser) return;
+  localStorage.removeItem(KEYS.user);
+}
