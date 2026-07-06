@@ -46,8 +46,10 @@ Debug-Build: `npm run apk:debug`. Lokale API testen:
 - `BlockConfigStore.kt` — SharedPreferences-Konfig, von Plugin und Service geteilt.
 - `BlockerAccessibilityService.kt` — reagiert auf `TYPE_WINDOW_STATE_CHANGED`;
   bei Treffer im Zeitfenster: HOME + eigene Activity mit `blocked_package`-Extra.
-  Ignoriert Launcher/SystemUI/IME, 3-s-Debounce pro Paket. Liest keine Bildschirminhalte
-  (`canRetrieveWindowContent=false`).
+  Ignoriert Launcher/SystemUI/IME, 3-s-Debounce pro Paket. Schließt außerdem
+  Bild-in-Bild-Fenster geblockter Apps per Drag-Geste zum Dismiss-Ziel
+  (`canRetrieveWindowContent` wird nur zur Paket-Zuordnung der Fenster genutzt,
+  Inhalte werden nicht ausgelesen).
 - JS-Seite: `src/lib/native.ts` (Wrapper mit Web-No-ops), Banner auf `/`
   (`?blockedApp=...`), Settings-UI `/blocking`.
 
@@ -56,6 +58,10 @@ Debug-Build: `npm run apk:debug`. Lokale API testen:
 - youtube.com im Browser wird nicht geblockt (ggf. Browser mitblocken).
 - Wer beim Fensterstart schon **in** der App ist, wird erst beim nächsten
   Fensterwechsel erwischt (Service ist rein event-getrieben).
+- Bild-in-Bild geblockter Apps wird automatisch geschlossen; falls das auf einem
+  Gerät nicht greift: PiP für die App unter „Spezieller App-Zugriff → Bild-in-Bild"
+  deaktivieren. Nach einem App-Update mit geänderten Service-Fähigkeiten die
+  Bedienungshilfe einmal aus- und wieder einschalten.
 - Für einen späteren Play-Store-Release: AccessibilityService für App-Blocking
   wird von Google abgelehnt → Detektor gegen `UsageStatsManager`-Polling tauschen
   (nur `BlockerAccessibilityService` ersetzen, Rest bleibt). `<queries>` statt

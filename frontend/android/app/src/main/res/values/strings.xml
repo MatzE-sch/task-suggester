@@ -4,5 +4,5 @@
     <string name="title_activity_main">Task Suggester</string>
     <string name="package_name">gg.schu.tasksuggester</string>
     <string name="custom_url_scheme">gg.schu.tasksuggester</string>
-    <string name="accessibility_service_description">Erkennt, wenn eine geblockte App geöffnet wird, und bringt dich zurück zum Task Suggester mit einem Aufgabenvorschlag. Liest keine Bildschirminhalte.</string>
+    <string name="accessibility_service_description">Erkennt, wenn eine geblockte App geöffnet wird, und bringt dich zurück zum Task Suggester mit einem Aufgabenvorschlag. Schließt auch Bild-in-Bild-Fenster geblockter Apps. Fensterzugriff wird nur genutzt, um zu erkennen, welcher App ein Fenster gehört — Inhalte werden nicht gelesen.</string>
 </resources>

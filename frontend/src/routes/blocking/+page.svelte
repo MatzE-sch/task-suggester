@@ -140,6 +140,8 @@
     <p class="text-xs text-neutral-600 px-1">
       Tipp: Falls das Blocken nach längerer Zeit aufhört, hat vermutlich die Akku-Optimierung
       den Dienst beendet — den Task Suggester in den Akku-Einstellungen auf „Nicht optimieren" stellen.
+      Falls Videos trotzdem als Mini-Fenster (Bild-in-Bild) weiterlaufen: in den Android-Einstellungen
+      unter „Spezieller App-Zugriff → Bild-in-Bild" für die App deaktivieren.
     </p>
   {/if}
 
