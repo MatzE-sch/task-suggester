@@ -9,14 +9,16 @@ export function initAuth() {
   if (!browser) return;
   const token = localStorage.getItem('token');
   if (!token) return;
-  import('../api').then(({ getMe }) =>
+  import('../api').then(({ getMe, ApiError }) =>
     getMe()
       .then((u) => user.set(u))
       .catch((e) => {
-        // TypeError = Netzwerkfehler → Token behalten, nächstes Mal online neu validieren
-        if (e instanceof TypeError) return;
-        localStorage.removeItem('token');
-        user.set(null);
+        // Nur bei 401 (Token ungültig/abgelaufen) ausloggen — Netzwerkfehler
+        // oder Serverfehler (z.B. 502 während Deploy) behalten den Token
+        if (e instanceof ApiError && e.status === 401) {
+          localStorage.removeItem('token');
+          user.set(null);
+        }
       })
   );
 }

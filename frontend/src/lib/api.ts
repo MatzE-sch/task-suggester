@@ -11,6 +11,12 @@ import { queueMutation } from './stores/offline';
 
 const BASE = PUBLIC_API_URL;
 
+export class ApiError extends Error {
+  constructor(public status: number, detail: string) {
+    super(detail);
+  }
+}
+
 function offline(): boolean {
   return browser && !navigator.onLine;
 }
@@ -32,7 +38,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? 'Request failed');
+    throw new ApiError(res.status, err.detail ?? 'Request failed');
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -70,9 +76,9 @@ export async function getMe(): Promise<User> {
     cacheUser(u);
     return u;
   } catch (e) {
-    // TypeError = fetch konnte Server nicht erreichen (kein/schlechtes Netz)
-    // In dem Fall gecachten User zurückgeben statt ausloggen
-    if (e instanceof TypeError) {
+    // Nur bei 401 (Token ungültig/abgelaufen) durchreichen — alles andere
+    // (Netzwerkfehler, 5xx während Deploy/Neustart) darf nicht ausloggen
+    if (!(e instanceof ApiError && e.status === 401)) {
       const cached = getCachedUser();
       if (cached) return cached;
     }
