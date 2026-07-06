@@ -44,6 +44,23 @@ export interface ActivityDay {
 
 export type ActivityStats = Record<string, ActivityDay>;
 
+export interface BlockedApp {
+  package: string;
+  label: string;
+}
+
+export interface ScheduleWindow {
+  // Minuten seit Mitternacht; end < start = Fenster über Mitternacht
+  start_minute: number;
+  end_minute: number;
+}
+
+export interface BlockSettings {
+  enabled: boolean;
+  blocked_packages: BlockedApp[];
+  schedule_windows: ScheduleWindow[];
+}
+
 export interface ActivityLogEntry {
   id: number;
   task_id: number | null;

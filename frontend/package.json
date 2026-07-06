@@ -6,11 +6,17 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:app": "CAP_BUILD=1 PUBLIC_API_URL=${PUBLIC_API_URL:-https://task-suggester.schu.gg/api} PUBLIC_BUILD_TIME=$(date -Iseconds) vite build && cap sync android",
+    "apk": "cd android && ./gradlew assembleRelease",
+    "apk:debug": "cd android && ./gradlew assembleDebug",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
+    "@capacitor/android": "^7.6.7",
+    "@capacitor/cli": "^7.6.7",
     "@sveltejs/adapter-node": "^5.2.11",
+    "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.16.0",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "autoprefixer": "^10.4.20",
@@ -21,5 +27,9 @@
     "typescript": "^5.0.0",
     "vite": "^5.0.0",
     "vite-plugin-pwa": "^0.21.1"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/core": "^7.6.7"
   }
 }

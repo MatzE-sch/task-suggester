@@ -8,7 +8,7 @@ from app.config import settings
 from app.database import SessionLocal, engine
 from app.logging_config import setup_logging
 from app.middleware.http_logging import HTTPLoggingMiddleware
-from app.routers import auth, tasks, categories, suggest, export, invites
+from app.routers import auth, tasks, categories, suggest, export, invites, block_settings
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -91,6 +91,7 @@ app.include_router(categories.router, prefix="/categories", tags=["categories"])
 app.include_router(suggest.router, prefix="/suggest", tags=["suggest"])
 app.include_router(export.router, prefix="/export", tags=["export"])
 app.include_router(invites.router, prefix="/invites", tags=["invites"])
+app.include_router(block_settings.router, prefix="/block-settings", tags=["block-settings"])
 
 
 @app.get("/health")

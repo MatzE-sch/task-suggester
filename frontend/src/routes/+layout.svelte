@@ -12,6 +12,8 @@
   import { isOnline, pendingMutations, replayMutations } from '$lib/stores/offline';
   import { loadCategories } from '$lib/stores/categories';
   import { clearDataCaches } from '$lib/cache';
+  import { isNative, onBlockedAppOpened, setNativeBlockConfig } from '$lib/native';
+  import { getBlockSettings } from '$lib/api';
   import { PUBLIC_BUILD_TIME } from '$env/static/public';
 
   let showInviteModal = false;
@@ -24,12 +26,26 @@
     { href: '/', label: 'Heute', key: 't' },
     { href: '/tasks', label: 'Liste', key: 'l' },
     { href: '/stats', label: 'Stats', key: 's' },
+    // App-Blocker nur in der Android-App (Settings sind trotzdem account-synchron)
+    ...(isNative() ? [{ href: '/blocking', label: 'Blocken', key: 'b' }] : []),
   ];
 
   onMount(() => {
     initAuth();
     if ($page.url.pathname !== '/login' && !localStorage.getItem('token')) {
       goto('/login');
+    }
+
+    if (isNative()) {
+      // Vom AccessibilityService umgeleitet: Vorschlag mit Blocked-Banner zeigen
+      onBlockedAppOpened(({ package: pkg, label }) => {
+        // ts erzwingt Navigation + neuen Vorschlag, auch wenn dieselbe App erneut geblockt wird
+        goto(`/?blockedApp=${encodeURIComponent(pkg)}&label=${encodeURIComponent(label)}&ts=${Date.now()}`);
+      });
+      // Block-Settings vom Account holen und in den nativen Speicher spiegeln
+      if (localStorage.getItem('token')) {
+        getBlockSettings().then(setNativeBlockConfig).catch(() => {});
+      }
     }
 
     async function handleOnline() {
@@ -67,6 +83,7 @@
         else if (e.key === 'l') { e.preventDefault(); goto('/tasks'); }
         else if (e.key === 's') { e.preventDefault(); goto('/stats'); }
         else if (e.key === 'n') { e.preventDefault(); goto('/tasks/new'); }
+        else if (e.key === 'b' && isNative()) { e.preventDefault(); goto('/blocking'); }
       }
     }
 
@@ -144,6 +161,8 @@
             <svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="currentColor"><path d="M12 2l2.09 6.26L20 9.27l-4.91 4.73 1.18 6.73L12 17.27l-4.27 3.46 1.18-6.73L4 9.27l5.91-1.01z"/></svg>
           {:else if item.href === '/tasks'}
             <svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="currentColor"><path d="M3 5h2v2H3zm4 0h14v2H7zm-4 5h2v2H3zm4 0h14v2H7zm-4 5h2v2H3zm4 0h14v2H7z"/></svg>
+          {:else if item.href === '/blocking'}
+            <svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="currentColor"><path d="M12 2L4 5.5V11c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5.5L12 2zm0 2.2l6 2.6V11c0 4-2.6 7.9-6 9-3.4-1.1-6-5-6-9V6.8l6-2.6z"/></svg>
           {:else}
             <svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="currentColor"><path d="M5 20h2v-8H5zm4 0h2v-4H9zm4 0h2V10h-2zm4 0h2V4h-2z"/></svg>
           {/if}
@@ -239,6 +258,8 @@
           <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M12 2l2.09 6.26L20 9.27l-4.91 4.73 1.18 6.73L12 17.27l-4.27 3.46 1.18-6.73L4 9.27l5.91-1.01z"/></svg>
         {:else if item.href === '/tasks'}
           <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M3 5h2v2H3zm4 0h14v2H7zm-4 5h2v2H3zm4 0h14v2H7zm-4 5h2v2H3zm4 0h14v2H7z"/></svg>
+        {:else if item.href === '/blocking'}
+          <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M12 2L4 5.5V11c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5.5L12 2zm0 2.2l6 2.6V11c0 4-2.6 7.9-6 9-3.4-1.1-6-5-6-9V6.8l6-2.6z"/></svg>
         {:else}
           <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M5 20h2v-8H5zm4 0h2v-4H9zm4 0h2V10h-2zm4 0h2V4h-2z"/></svg>
         {/if}

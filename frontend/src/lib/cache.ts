@@ -1,11 +1,12 @@
 import { browser } from '$app/environment';
-import type { Task, Category, User, ActivityStats } from './types';
+import type { Task, Category, User, ActivityStats, BlockSettings } from './types';
 
 const KEYS = {
   tasks: 'ts_tasks',
   categories: 'ts_categories',
   activityStats: 'ts_activity_stats',
   user: 'ts_user',
+  blockSettings: 'ts_block_settings',
 };
 
 function save<T>(key: string, data: T): void {
@@ -32,6 +33,9 @@ export const getCachedActivityStats = (): ActivityStats | null => load<ActivityS
 
 export const cacheUser = (user: User) => save(KEYS.user, user);
 export const getCachedUser = (): User | null => load<User>(KEYS.user);
+
+export const cacheBlockSettings = (s: BlockSettings) => save(KEYS.blockSettings, s);
+export const getCachedBlockSettings = (): BlockSettings | null => load<BlockSettings>(KEYS.blockSettings);
 
 export function clearDataCaches(): void {
   if (!browser) return;

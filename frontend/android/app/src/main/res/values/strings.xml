@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Task Suggester</string>
+    <string name="title_activity_main">Task Suggester</string>
+    <string name="package_name">gg.schu.tasksuggester</string>
+    <string name="custom_url_scheme">gg.schu.tasksuggester</string>
+    <string name="accessibility_service_description">Erkennt, wenn eine geblockte App geöffnet wird, und bringt dich zurück zum Task Suggester mit einem Aufgabenvorschlag. Liest keine Bildschirminhalte.</string>
+</resources>

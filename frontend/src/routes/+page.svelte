@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { pickSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
   import { loadCategories, categories } from '$lib/stores/categories';
   import { showShortcutHints } from '$lib/stores/shortcuts';
@@ -20,6 +22,19 @@
   let showSnoozeForm = false;
   let snoozeDate = '';
   let noTasks = false;
+  let lastBlockedTs = '';
+
+  // Vom App-Blocker umgeleitet: Banner zeigen, bei jedem neuen Block frischen Vorschlag
+  $: blockedLabel = $page.url.searchParams.get('blockedApp')
+    ? ($page.url.searchParams.get('label') || $page.url.searchParams.get('blockedApp'))
+    : null;
+  $: {
+    const ts = $page.url.searchParams.get('ts') ?? '';
+    if (blockedLabel && ts !== lastBlockedTs) {
+      lastBlockedTs = ts;
+      if (allTasks.length) fetchSuggestion();
+    }
+  }
 
   onMount(async () => {
     // Sofort aus Cache anzeigen
@@ -119,6 +134,21 @@
 </script>
 
 <div class="py-6 space-y-6">
+  {#if blockedLabel}
+    <div class="bg-red-950/60 border border-red-900 rounded-2xl p-5 flex items-start gap-3">
+      <span class="text-2xl">⛔</span>
+      <div class="flex-1 space-y-1">
+        <p class="font-medium text-sm text-red-200">{blockedLabel} ist gerade geblockt</p>
+        <p class="text-xs text-red-100/70">Mach stattdessen das hier:</p>
+      </div>
+      <button
+        onclick={() => goto('/', { replaceState: true })}
+        class="text-red-300/60 hover:text-red-200 transition-colors px-1"
+        aria-label="Banner schließen"
+      >✕</button>
+    </div>
+  {/if}
+
   <!-- Mode selector -->
   <div class="flex items-center gap-2 flex-wrap">
     {#each [['random', 'Zufällig'], ['deadline', 'Deadline'], ['category', 'Kategorie'], ['recurring', 'Wiederkehrend'], ['prio', 'Prio']] as [m, label]}
@@ -152,6 +182,9 @@
       <p class="text-2xl">🎉</p>
       <p class="font-medium">Keine offenen Tasks!</p>
       <p class="text-sm text-neutral-500">Alle Aufgaben erledigt oder blockiert.</p>
+      {#if allTasks.length === 0}
+        <p class="text-xs text-neutral-600">Noch keine Tasks geladen — einmal mit Internet öffnen.</p>
+      {/if}
       <a href="/tasks/new" class="inline-block mt-2 text-sm text-indigo-400 hover:underline">Neuen Task anlegen</a>
     </div>
   {:else if task && !showEditForm && !showBlockForm}

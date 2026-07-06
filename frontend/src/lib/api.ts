@@ -1,11 +1,12 @@
 import { browser } from '$app/environment';
 import { PUBLIC_API_URL } from '$env/static/public';
-import type { Task, Category, User, ActivityStats, SuggestMode, TaskType, ActivityLogEntry } from './types';
+import type { Task, Category, User, ActivityStats, SuggestMode, TaskType, ActivityLogEntry, BlockSettings } from './types';
 import {
   cacheTasks, getCachedTasks,
   cacheCategories, getCachedCategories,
   cacheActivityStats, getCachedActivityStats,
   cacheUser, getCachedUser,
+  cacheBlockSettings, getCachedBlockSettings,
 } from './cache';
 import { queueMutation } from './stores/offline';
 
@@ -304,6 +305,28 @@ export async function updateCategory(id: number, data: Partial<{ name: string; c
 
 export async function deleteCategory(id: number): Promise<void> {
   return request<void>(`/categories/${id}`, { method: 'DELETE' });
+}
+
+// Block-Settings (App-Blocker der Android-App)
+export async function getBlockSettings(): Promise<BlockSettings> {
+  try {
+    const s = await request<BlockSettings>('/block-settings');
+    cacheBlockSettings(s);
+    return s;
+  } catch (e) {
+    const cached = getCachedBlockSettings();
+    if (cached) return cached;
+    throw e;
+  }
+}
+
+export async function putBlockSettings(s: BlockSettings): Promise<BlockSettings> {
+  cacheBlockSettings(s);
+  if (offline()) {
+    queueMutation('PUT', '/block-settings', JSON.stringify(s));
+    return s;
+  }
+  return request<BlockSettings>('/block-settings', { method: 'PUT', body: JSON.stringify(s) });
 }
 
 // Invites

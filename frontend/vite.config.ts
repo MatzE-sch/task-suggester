@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [
     sveltekit(),
     VitePWA({
+      // Im Capacitor-Build kein Service Worker: Assets liegen lokal in der APK,
+      // ein SW würde sie nur veralten lassen.
+      disable: !!process.env.CAP_BUILD,
       registerType: 'autoUpdate',
       manifest: {
         name: 'Task Suggester',
