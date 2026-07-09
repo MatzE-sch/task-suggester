@@ -16,6 +16,32 @@
   let search = '';
   let sortByPriority = false;
   let expandedTaskId: number | null = null;
+  let selectedCategories: number[] = [];
+  let showFilters = false;
+
+  const CAT_FILTER_KEY = 'tasks-cat-filter';
+  const SORT_KEY = 'tasks-sort-priority';
+
+  function toggleCategory(id: number) {
+    selectedCategories = selectedCategories.includes(id)
+      ? selectedCategories.filter((c) => c !== id)
+      : [...selectedCategories, id];
+    sessionStorage.setItem(CAT_FILTER_KEY, JSON.stringify(selectedCategories));
+  }
+
+  function toggleSort() {
+    sortByPriority = !sortByPriority;
+    sessionStorage.setItem(SORT_KEY, String(sortByPriority));
+  }
+
+  function resetFilters() {
+    selectedCategories = [];
+    sortByPriority = false;
+    sessionStorage.removeItem(CAT_FILTER_KEY);
+    sessionStorage.removeItem(SORT_KEY);
+  }
+
+  $: activeFilterCount = selectedCategories.length + (sortByPriority ? 1 : 0);
 
   function toggleExpand(id: number) {
     expandedTaskId = expandedTaskId === id ? null : id;
@@ -66,6 +92,12 @@
   onMount(() => {
     const savedFilter = sessionStorage.getItem(FILTER_KEY) as typeof filter;
     if (savedFilter && savedFilter !== 'done') filter = savedFilter;
+
+    const savedCats = sessionStorage.getItem(CAT_FILTER_KEY);
+    if (savedCats) {
+      try { selectedCategories = JSON.parse(savedCats); } catch { /* ignore */ }
+    }
+    sortByPriority = sessionStorage.getItem(SORT_KEY) === 'true';
 
     const cached = getCachedTasks();
     if (cached) tasks = cached;
@@ -150,7 +182,9 @@
     : filter === 'recurring'
       ? tasks.filter((t) => t.task_type === 'recurring')
       : tasks.filter((t) => t.status === filter)
-  ).filter((t) => !search || t.title.toLowerCase().includes(search.toLowerCase()));
+  )
+    .filter((t) => !search || t.title.toLowerCase().includes(search.toLowerCase()))
+    .filter((t) => selectedCategories.length === 0 || t.categories.some((c) => selectedCategories.includes(c.id)));
 
   function recurringProgress(task: Task): number {
     if (!task.recurrence_days) return -1;
@@ -249,10 +283,51 @@
           class="text-xs px-3 py-1.5 rounded-full transition-colors {filter === f ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'}"
         >{label}</button>
       {/each}
-      <button
-        onclick={() => (sortByPriority = !sortByPriority)}
-        class="text-xs px-3 py-1.5 rounded-full transition-colors {sortByPriority ? 'bg-indigo-700 text-white' : 'text-neutral-500 hover:text-white'}"
-      >↑ Priorität</button>
+      <div class="relative">
+        <button
+          onclick={() => (showFilters = !showFilters)}
+          class="text-xs px-3 py-1.5 rounded-full transition-colors {activeFilterCount ? 'bg-indigo-700 text-white' : 'text-neutral-500 hover:text-white'}"
+        >⚙ Filter{activeFilterCount ? ` (${activeFilterCount})` : ''}</button>
+
+        {#if showFilters}
+          <button class="fixed inset-0 z-40 cursor-default" onclick={() => (showFilters = false)} aria-label="Schließen"></button>
+          <div class="absolute right-0 mt-2 z-50 w-64 bg-neutral-900 border border-neutral-700 rounded-xl p-4 shadow-xl space-y-3">
+            {#if $categories.length}
+              <div>
+                <p class="text-xs text-neutral-500 mb-2">Kategorien</p>
+                <div class="flex gap-1.5 flex-wrap">
+                  {#each $categories as cat}
+                    <button
+                      onclick={() => toggleCategory(cat.id)}
+                      class="text-xs px-2 py-1 rounded-full border transition-colors"
+                      style={selectedCategories.includes(cat.id)
+                        ? `background-color: ${cat.color}; border-color: ${cat.color}; color: ${isLightColor(cat.color) ? '#000' : '#fff'}`
+                        : `border-color: ${cat.color}66; color: ${cat.color}`}
+                    >{cat.name}</button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            <div class="pt-3 border-t border-neutral-800">
+              <button
+                onclick={toggleSort}
+                class="flex items-center justify-between w-full text-sm text-left"
+              >
+                <span>Nach Priorität sortieren</span>
+                <span class="{sortByPriority ? 'text-indigo-400' : 'text-neutral-600'}">{sortByPriority ? '✓ an' : 'aus'}</span>
+              </button>
+            </div>
+
+            {#if activeFilterCount}
+              <button
+                onclick={resetFilters}
+                class="w-full text-xs py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 transition-colors"
+              >Zurücksetzen</button>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
 
     <!-- Search -->
