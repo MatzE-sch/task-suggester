@@ -269,17 +269,18 @@ function recurringPct(t: Task): number {
   return (Date.now() - (due - t.recurrence_days * 86400000)) / (t.recurrence_days * 86400000) * 100;
 }
 
-export function pickSuggestion(tasks: Task[], mode: SuggestMode, categoryIds: number[]): Task {
+export function isEligible(task: Task, tasks: Task[], mode: SuggestMode, categoryIds: number[]): boolean {
   const now = Date.now();
   const doneIds = new Set(tasks.filter((t) => t.status === 'done' || t.status === 'skipped').map((t) => t.id));
-  let eligible = tasks.filter((t) => {
-    if (t.status !== 'open' && t.status !== 'in_progress') return false;
-    if (t.snoozed_until && new Date(t.snoozed_until).getTime() > now) return false;
-    if (t.dependency_ids.some((id) => !doneIds.has(id))) return false;
-    return true;
-  });
-  if (mode === 'category' && categoryIds.length > 0)
-    eligible = eligible.filter((t) => t.categories.some((c) => categoryIds.includes(c.id)));
+  if (task.status !== 'open' && task.status !== 'in_progress') return false;
+  if (task.snoozed_until && new Date(task.snoozed_until).getTime() > now) return false;
+  if (task.dependency_ids.some((id) => !doneIds.has(id))) return false;
+  if (mode === 'category' && categoryIds.length > 0 && !task.categories.some((c) => categoryIds.includes(c.id))) return false;
+  return true;
+}
+
+export function pickSuggestion(tasks: Task[], mode: SuggestMode, categoryIds: number[]): Task {
+  const eligible = tasks.filter((t) => isEligible(t, tasks, mode, categoryIds));
   if (eligible.length === 0) throw new Error('No eligible tasks');
   if (mode === 'deadline') {
     const withDl = eligible

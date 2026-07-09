@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { pickSuggestion, taskAction, createTask, getTasks, updateTask } from '$lib/api';
+  import { pickSuggestion, isEligible, taskAction, createTask, getTasks, updateTask } from '$lib/api';
   import { loadCategories, categories } from '$lib/stores/categories';
   import { isLoggedIn } from '$lib/stores/auth';
   import { showShortcutHints } from '$lib/stores/shortcuts';
@@ -43,11 +43,19 @@
     if (allTasks.length) fetchSuggestion();
     // Frisch laden, dann Vorschlag neu berechnen
     await Promise.all([loadCategories(), fetchTasks()]);
-    fetchSuggestion();
+    refreshSuggestion();
   });
 
   async function fetchTasks() {
     try { allTasks = await getTasks(); } catch {}
+  }
+
+  // Nach frischem Server-Load nur neu würfeln, wenn der aktuell gezeigte
+  // Vorschlag nicht mehr gültig ist — sonst tauscht random-Modus die Karte aus.
+  function refreshSuggestion() {
+    const current = task && allTasks.find((t) => t.id === task!.id);
+    if (!current || !isEligible(current, allTasks, mode, selectedCategoryIds)) fetchSuggestion();
+    else task = current;
   }
 
   function fetchSuggestion() {
@@ -91,7 +99,7 @@
     try {
       await taskAction(doneTask.id, action, undefined, snoozedUntil ? new Date(snoozedUntil).toISOString() : undefined);
       allTasks = await getTasks();
-      fetchSuggestion();
+      refreshSuggestion();
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Fehler';
     }
