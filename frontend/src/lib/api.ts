@@ -9,6 +9,7 @@ import {
   cacheBlockSettings, getCachedBlockSettings,
 } from './cache';
 import { queueMutation, cancelTempTask } from './stores/offline';
+import { logEvent, setTelemetryUser } from './telemetry';
 
 const BASE = PUBLIC_API_URL;
 
@@ -59,9 +60,14 @@ export async function login(username: string, password: string): Promise<void> {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: form,
   });
-  if (!res.ok) throw new Error('Login fehlgeschlagen');
+  if (!res.ok) {
+    logEvent('auth.login_failed', { username }, 'warn');
+    throw new Error('Login fehlgeschlagen');
+  }
   const data = await res.json();
   localStorage.setItem('token', data.access_token);
+  setTelemetryUser(username);
+  logEvent('auth.login', { username });
 }
 
 export async function register(username: string, password: string, inviteCode: string): Promise<void> {
@@ -69,6 +75,7 @@ export async function register(username: string, password: string, inviteCode: s
     method: 'POST',
     body: JSON.stringify({ username, password, invite_code: inviteCode }),
   });
+  logEvent('auth.register', { username });
   await login(username, password);
 }
 
@@ -81,6 +88,7 @@ export async function getMe(): Promise<User> {
   try {
     const u = await request<User>('/auth/me');
     cacheUser(u);
+    setTelemetryUser(u.username);
     return u;
   } catch (e) {
     // Nur bei 401 (Token ungültig/abgelaufen) durchreichen — alles andere
@@ -94,7 +102,9 @@ export async function getMe(): Promise<User> {
 }
 
 export function logout() {
+  logEvent('auth.logout');
   localStorage.removeItem('token');
+  setTelemetryUser(null);
 }
 
 // Tasks
@@ -121,6 +131,7 @@ export async function createTask(data: {
   category_ids?: number[];
   dependency_ids?: number[];
 }): Promise<Task> {
+  logEvent('task.created', { task_type: data.task_type ?? 'normal', local: localOnly() });
   if (localOnly()) {
     const now = new Date().toISOString();
     const tempTask: Task = {
@@ -162,6 +173,7 @@ export async function updateTask(id: number, data: Partial<{
   category_ids: number[];
   dependency_ids: number[];
 }>): Promise<Task> {
+  logEvent('task.updated', { task_id: id, local: localOnly() });
   if (localOnly()) {
     const cached = getCachedTasks() ?? [];
     const existing = cached.find((t) => t.id === id);
@@ -178,6 +190,7 @@ export async function updateTask(id: number, data: Partial<{
 }
 
 export async function deleteTask(id: number): Promise<void> {
+  logEvent('task.deleted', { task_id: id, local: localOnly() });
   if (id < 0) {
     // Nie gesyncter Temp-Task: komplett aus Queue + Cache entfernen, nie zum Server
     cancelTempTask(id);
@@ -202,6 +215,7 @@ export async function taskAction(id: number, action: string, newTask?: {
   const d = new Date();
   const logged_date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const body = JSON.stringify({ action, new_task: newTask, snoozed_until: snoozedUntil, logged_date });
+  logEvent('task.action', { task_id: id, action, local: localOnly() });
 
   if (localOnly()) {
     const cached = getCachedTasks() ?? [];
@@ -281,6 +295,7 @@ export function isEligible(task: Task, tasks: Task[], mode: SuggestMode, categor
 
 export function pickSuggestion(tasks: Task[], mode: SuggestMode, categoryIds: number[]): Task {
   const eligible = tasks.filter((t) => isEligible(t, tasks, mode, categoryIds));
+  logEvent('suggest.pick', { mode, eligible: eligible.length });
   if (eligible.length === 0) throw new Error('No eligible tasks');
   if (mode === 'deadline') {
     const withDl = eligible
@@ -317,6 +332,7 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function createCategory(data: { name: string; color: string; icon?: string }): Promise<Category> {
+  logEvent('category.created', { name: data.name });
   return request<Category>('/categories', { method: 'POST', body: JSON.stringify(data) });
 }
 
@@ -325,6 +341,7 @@ export async function updateCategory(id: number, data: Partial<{ name: string; c
 }
 
 export async function deleteCategory(id: number): Promise<void> {
+  logEvent('category.deleted', { category_id: id });
   return request<void>(`/categories/${id}`, { method: 'DELETE' });
 }
 
@@ -345,6 +362,11 @@ export async function getBlockSettings(): Promise<BlockSettings> {
 }
 
 export async function putBlockSettings(s: BlockSettings): Promise<BlockSettings> {
+  logEvent('blocklist.updated', {
+    enabled: s.enabled,
+    apps: s.blocked_packages.length,
+    windows: s.schedule_windows.length,
+  });
   cacheBlockSettings(s);
   // Gast: nur lokal speichern, nie queuen — Geräte-Config gehört nicht in den Account-Merge
   if (!getToken()) return s;
@@ -363,6 +385,7 @@ export interface InviteCode {
 }
 
 export async function createInvite(): Promise<InviteCode> {
+  logEvent('invite.created');
   return request<InviteCode>('/invites', { method: 'POST' });
 }
 
@@ -373,6 +396,7 @@ export async function getInvites(): Promise<InviteCode[]> {
 // ICS Export — client-side aus gecachten Tasks
 export function downloadIcs(): void {
   const tasks = getCachedTasks() ?? [];
+  logEvent('export.ics', { tasks: tasks.length });
   const statusMap: Record<string, string> = {
     open: 'NEEDS-ACTION', in_progress: 'IN-PROCESS',
     waiting: 'NEEDS-ACTION', done: 'COMPLETED', skipped: 'CANCELLED',

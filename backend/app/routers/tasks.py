@@ -169,6 +169,10 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db), u
     _apply_relations(task, data.category_ids, data.dependency_ids, db)
     db.commit()
     db.refresh(task)
+    logger.info(
+        "task updated",
+        extra={"event": "task.updated", "task_id": task.id, "task_type": task.task_type, "user_id": user.id},
+    )
     return TaskOut.from_orm_task(task)
 
 

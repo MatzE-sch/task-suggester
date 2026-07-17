@@ -39,7 +39,12 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form.username).first()
     if not user or not verify_password(form.password, user.hashed_password):
+        logger.warning(
+            "login failed",
+            extra={"event": "user.login_failed", "username": form.username},
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    logger.info("user login", extra={"event": "user.login", "user_id": user.id, "username": user.username})
     return Token(access_token=create_access_token(user.id))
 
 

@@ -19,6 +19,8 @@ class JsonFormatter(logging.Formatter):
             "event", "user_id", "task_id", "action", "task_type", "category_ids",
             "method", "path", "status_code", "latency_ms", "client_ip",
             "trace_id", "request_id",
+            "username", "invite_id", "category_id", "enabled",
+            "blocked_count", "window_count",
         ):
             val = getattr(record, key, None)
             if val is not None:

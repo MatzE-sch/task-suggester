@@ -1,0 +1,658 @@
+{
+  "title": "Task Suggester",
+  "uid": "task-suggester",
+  "tags": ["task-suggester", "loki"],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "time": { "from": "now-7d", "to": "now" },
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "label": "Loki",
+        "type": "datasource",
+        "query": "loki",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "env",
+        "label": "Umgebung",
+        "type": "custom",
+        "query": "prod,dev",
+        "current": { "text": "prod", "value": "prod", "selected": true },
+        "options": [
+          { "text": "prod", "value": "prod", "selected": true },
+          { "text": "dev", "value": "dev", "selected": false }
+        ],
+        "hide": 0
+      },
+      {
+        "name": "backend",
+        "label": "Backend-Selektor",
+        "type": "textbox",
+        "query": "container=~\".*task-suggester.*backend.*\"",
+        "current": {
+          "text": "container=~\".*task-suggester.*backend.*\"",
+          "value": "container=~\".*task-suggester.*backend.*\""
+        },
+        "hide": 0,
+        "description": "Loki-Label-Selektor für die Backend-Docker-Logs — an das eigene Log-Scraping (promtail/alloy) anpassen"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Sessions",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(sum by (session_id) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"session.start\" [$__range])))",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#3987e5" },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Neue Nutzer (First Visits)",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"session.start\" | first_visit=\"true\" [$__range]))",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#199e70" },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Tasks erledigt",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"task.action\" | action=\"done\" [$__range]))",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#0ca30c" },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Apps geblockt",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"app.blocked\" [$__range]))",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#d95926" },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Invites erstellt",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"invite.created\" [$__range]))",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#9085e9" },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Frontend-Fehler",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\", level=\"error\"} [$__range]))",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#0ca30c", "value": null },
+              { "color": "#fab219", "value": 1 },
+              { "color": "#d03b3b", "value": 10 }
+            ]
+          },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Aktivität nach Event-Typ",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (event) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event!=\"\" [$__auto]))",
+          "legendFormat": "{{event}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "stacking": { "mode": "normal", "group": "A" },
+            "barAlignment": 0,
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "page.view" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] },
+          { "matcher": { "id": "byName", "options": "task.action" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#008300" } }] },
+          { "matcher": { "id": "byName", "options": "task.created" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#199e70" } }] },
+          { "matcher": { "id": "byName", "options": "suggest.pick" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#9085e9" } }] },
+          { "matcher": { "id": "byName", "options": "session.start" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#d55181" } }] },
+          { "matcher": { "id": "byName", "options": "app.blocked" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#d95926" } }] },
+          { "matcher": { "id": "byName", "options": "error.js" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#e66767" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Task-Aktionen",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (action) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"task.action\" [$__auto]))",
+          "legendFormat": "{{action}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "stacking": { "mode": "normal", "group": "A" },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "done" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#0ca30c" } }] },
+          { "matcher": { "id": "byName", "options": "skip" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#c98500" } }] },
+          { "matcher": { "id": "byName", "options": "start" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] },
+          { "matcher": { "id": "byName", "options": "waiting" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#9085e9" } }] },
+          { "matcher": { "id": "byName", "options": "block" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#d95926" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Sessions & neue Nutzer",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"session.start\" [$__auto]))",
+          "legendFormat": "Sessions"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"session.start\" | first_visit=\"true\" [$__auto]))",
+          "legendFormat": "davon neue Nutzer"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Sessions" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] },
+          { "matcher": { "id": "byName", "options": "davon neue Nutzer" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#199e70" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      }
+    },
+    {
+      "type": "piechart",
+      "title": "Plattform (Sessions)",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (platform) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"session.start\" [$__range]))",
+          "legendFormat": "{{platform}}",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "web" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] },
+          { "matcher": { "id": "byName", "options": "android" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#199e70" } }] }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value"],
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "type": "piechart",
+      "title": "Suggest-Modi",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (mode) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"suggest.pick\" [$__range]))",
+          "legendFormat": "{{mode}}",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "random" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] },
+          { "matcher": { "id": "byName", "options": "deadline" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#008300" } }] },
+          { "matcher": { "id": "byName", "options": "recurring" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#d55181" } }] },
+          { "matcher": { "id": "byName", "options": "prio" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#c98500" } }] },
+          { "matcher": { "id": "byName", "options": "category" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#199e70" } }] }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value"],
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "App-Blocks über Zeit",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 21 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (app_label) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"app.blocked\" [$__auto]))",
+          "legendFormat": "{{app_label}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "stacking": { "mode": "normal", "group": "A" },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Top geblockte Apps",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (app_label) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"app.blocked\" [$__range])))",
+          "legendFormat": "{{app_label}}",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#d95926" },
+          "unit": "short",
+          "noValue": "keine Blocks im Zeitraum"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Online/Offline-Wechsel & Sync",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (event) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=~\"network.(online|offline)\" [$__auto]))",
+          "legendFormat": "{{event}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(sum_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | event=\"sync.replayed\" | unwrap replayed [$__auto]))",
+          "legendFormat": "gesyncte Offline-Mutationen"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "network.online" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#0ca30c" } }] },
+          { "matcher": { "id": "byName", "options": "network.offline" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#d03b3b" } }] },
+          { "matcher": { "id": "byName", "options": "gesyncte Offline-Mutationen" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Aktivste Nutzer (Events)",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(15, sum by (user) (count_over_time({project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | user!=\"\" [$__range])))",
+          "legendFormat": "{{user}}",
+          "queryType": "instant",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#3987e5" },
+          "unit": "short",
+          "noValue": "keine eingeloggten Nutzer im Zeitraum"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Backend: HTTP-Requests nach Status",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 37 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status_code) (count_over_time({$backend} | json | event=\"http.request\" [$__auto]))",
+          "legendFormat": "{{status_code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "stacking": { "mode": "normal", "group": "A" },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/^2../" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#0ca30c" } }] },
+          { "matcher": { "id": "byRegexp", "options": "/^3../" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] },
+          { "matcher": { "id": "byRegexp", "options": "/^4../" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#fab219" } }] },
+          { "matcher": { "id": "byRegexp", "options": "/^5../" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#d03b3b" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Backend: Latenz",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 37 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(quantile_over_time(0.5, {$backend} | json | event=\"http.request\" | unwrap latency_ms [$__auto]))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "avg(quantile_over_time(0.95, {$backend} | json | event=\"http.request\" | unwrap latency_ms [$__auto]))",
+          "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "pointSize": 4,
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "p50" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#3987e5" } }] },
+          { "matcher": { "id": "byName", "options": "p95" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#d95926" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Fehler & Warnungen (Frontend + Backend)",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{project=\"task-suggestor\", source=\"frontend\", env=\"$env\", level=~\"error|warn\"}"
+        },
+        {
+          "refId": "B",
+          "expr": "{$backend} | json | level=~\"ERROR|WARNING\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Frontend-Events (live)",
+      "datasource": { "type": "loki", "uid": "${ds}" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 53 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{project=\"task-suggestor\", source=\"frontend\", env=\"$env\"} | json | line_format \"{{.event}}  user={{.user}}  {{__line__}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

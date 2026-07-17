@@ -2,6 +2,7 @@ import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { PUBLIC_API_URL } from '$env/static/public';
 import { getCachedTasks, cacheTasks } from '../cache';
+import { logEvent } from '../telemetry';
 
 export interface PendingMutation {
   id: string;
@@ -144,6 +145,7 @@ export async function replayMutations(onComplete?: () => void): Promise<void> {
   const remaining = failedIndex < 0 ? [] : mutations.slice(failedIndex).map((m) => remapIds(m, idMap));
   pendingMutations.set(remaining);
   persistQueue(remaining);
+  logEvent('sync.replayed', { replayed: mutations.length - remaining.length, remaining: remaining.length });
 
   // Lokalen Cache konsistent halten: Temp-IDs durch echte ersetzen
   if (idMap.size > 0) {

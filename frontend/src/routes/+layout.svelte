@@ -2,7 +2,7 @@
   import '../app.css';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
+  import { goto, afterNavigate } from '$app/navigation';
   import { user, isLoggedIn, initAuth } from '$lib/stores/auth';
   import { logout, createInvite } from '$lib/api';
   import { showShortcutHints } from '$lib/stores/shortcuts';
@@ -13,6 +13,7 @@
   import { clearDataCaches, clearUserCache } from '$lib/cache';
   import { isNative, onBlockedAppOpened, setNativeBlockConfig } from '$lib/native';
   import { getBlockSettings } from '$lib/api';
+  import { initTelemetry, logEvent } from '$lib/telemetry';
   import { PUBLIC_BUILD_TIME } from '$env/static/public';
 
   let showInviteModal = false;
@@ -27,12 +28,18 @@
     { href: '/stats', label: 'Stats', key: 's' },
   ];
 
+  afterNavigate((nav) => {
+    logEvent('page.view', { path: nav.to?.url.pathname ?? '' });
+  });
+
   onMount(() => {
+    initTelemetry();
     initAuth();
 
     if (isNative()) {
       // Vom AccessibilityService umgeleitet: Vorschlag mit Blocked-Banner zeigen
       onBlockedAppOpened(({ package: pkg, label }) => {
+        logEvent('app.blocked', { package: pkg, app_label: label });
         // ts erzwingt Navigation + neuen Vorschlag, auch wenn dieselbe App erneut geblockt wird
         goto(`/?blockedApp=${encodeURIComponent(pkg)}&label=${encodeURIComponent(label)}&ts=${Date.now()}`);
       });
@@ -123,6 +130,7 @@
   }
 
   function copyLink() {
+    logEvent('invite.link_copied');
     navigator.clipboard.writeText(inviteLink);
   }
 </script>

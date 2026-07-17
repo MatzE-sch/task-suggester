@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -9,6 +11,7 @@ from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryOut
 from app.services.auth import get_current_user
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=list[CategoryOut])
@@ -25,6 +28,7 @@ def create_category(data: CategoryCreate, db: Session = Depends(get_db), _: User
     db.add(cat)
     db.commit()
     db.refresh(cat)
+    logger.info("category created", extra={"event": "category.created", "category_id": cat.id})
     return cat
 
 
@@ -47,3 +51,4 @@ def delete_category(category_id: int, db: Session = Depends(get_db), _: User = D
         raise HTTPException(status_code=404, detail="Category not found")
     db.delete(cat)
     db.commit()
+    logger.info("category deleted", extra={"event": "category.deleted", "category_id": category_id})

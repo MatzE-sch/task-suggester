@@ -1,3 +1,4 @@
+import logging
 import uuid
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from app.models.user import User
 from app.services.auth import get_current_user
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class InviteOut(BaseModel):
@@ -25,6 +27,7 @@ def create_invite(db: Session = Depends(get_db), user: User = Depends(get_curren
     db.add(code)
     db.commit()
     db.refresh(code)
+    logger.info("invite created", extra={"event": "invite.created", "invite_id": code.id, "user_id": user.id})
     return InviteOut(id=code.id, code=code.code, used=code.used_by is not None)
 
 
